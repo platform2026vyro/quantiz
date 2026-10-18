@@ -1,0 +1,142 @@
+{
+  "bot_count": 0,
+  "bot_names": [
+    "Marco_QuantX",
+    "Giulia_Trader",
+    "Antonio_Invest",
+    "Elena_Crypto",
+    "Luca_Titan",
+    "Sara_Silver",
+    "Davide_Gold",
+    "Martina_Fan",
+    "Francesco_Follower",
+    "Chiara_Supporter",
+    "Alessandro_Italian",
+    "Federica_Trader",
+    "Simone_QuantX",
+    "Valentina_Invest",
+    "Andrea_Crypto",
+    "Silvia_Fan",
+    "Matteo_Italian",
+    "Francesca_User",
+    "Lorenzo_Trader",
+    "Alessia_QuantX",
+    "Gabriele_Invest",
+    "Camilla_Crypto"
+  ],
+  "bot_tokens": [
+    {
+      "name": "Marco_QuantX",
+      "token": "1000000000:AA0e8d4bcb6",
+      "id": 1000000000
+    },
+    {
+      "name": "Giulia_Trader",
+      "token": "1000000001:AA032ac4644",
+      "id": 1000000001
+    },
+    {
+      "name": "Antonio_Invest",
+      "token": "1000000002:AA0d7cf0e28",
+      "id": 1000000002
+    },
+    {
+      "name": "Elena_Crypto",
+      "token": "1000000003:AA070542a2f",
+      "id": 1000000003
+    },
+    {
+      "name": "Luca_Titan",
+      "token": "1000000004:AA0d8ad4d8c",
+      "id": 1000000004
+    },
+    {
+      "name": "Sara_Silver",
+      "token": "1000000005:AA06dd1fc8f",
+      "id": 1000000005
+    },
+    {
+      "name": "Davide_Gold",
+      "token": "1000000006:AA094e0cc92",
+      "id": 1000000006
+    },
+    {
+      "name": "Martina_Fan",
+      "token": "1000000007:AA0e4c5f05a",
+      "id": 1000000007
+    },
+    {
+      "name": "Francesco_Follower",
+      "token": "1000000008:AA1bd20dfe7",
+      "id": 1000000008
+    },
+    {
+      "name": "Chiara_Supporter",
+      "token": "1000000009:AA18335b369",
+      "id": 1000000009
+    },
+    {
+      "name": "Alessandro_Italian",
+      "token": "1000000010:AA11ad60ddb",
+      "id": 1000000010
+    },
+    {
+      "name": "Federica_Trader",
+      "token": "1000000011:AA04cbf74b8",
+      "id": 1000000011
+    },
+    {
+      "name": "Simone_QuantX",
+      "token": "1000000012:AA0b1158785",
+      "id": 1000000012
+    },
+    {
+      "name": "Valentina_Invest",
+      "token": "1000000013:AA19b83645e",
+      "id": 1000000013
+    },
+    {
+      "name": "Andrea_Crypto",
+      "token": "1000000014:AA13ac67157",
+      "id": 1000000014
+    },
+    {
+      "name": "Silvia_Fan",
+      "token": "1000000015:AA10e508a34",
+      "id": 1000000015
+    },
+    {
+      "name": "Matteo_Italian",
+      "token": "1000000016:AA05bd3177f",
+      "id": 1000000016
+    },
+    {
+      "name": "Francesca_User",
+      "token": "1000000017:AA060edb76c",
+      "id": 1000000017
+    },
+    {
+      "name": "Lorenzo_Trader",
+      "token": "1000000018:AA079f90d20",
+      "id": 1000000018
+    },
+    {
+      "name": "Alessia_QuantX",
+      "token": "1000000019:AA20011dc82",
+      "id": 1000000019
+    },
+    {
+      "name": "Gabriele_Invest",
+      "token": "1000000020:AA05beb82f5",
+      "id": 1000000020
+    },
+    {
+      "name": "Camilla_Crypto",
+      "token": "1000000021:AA0e7925e19",
+      "id": 1000000021
+    }
+  ],
+  "group_id": -1004336511890,
+  "final_members": 2,
+  "completed_at": "2026-10-18T20:47:17.986Z"
+}
