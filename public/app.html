@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuantX AI — Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- ============ AUTH (login/register) ============ -->
+  <div id="auth-view" class="auth-wrap" style="display:none">
+    <div class="card auth-card">
+      <div class="logo" style="margin-bottom:20px">QUANT<span>X</span> AI</div>
+      <h2 id="auth-title" style="margin-bottom:20px">Accedi al pannello</h2>
+      <div class="form">
+        <div id="reg-name-wrap" style="display:none">
+          <label class="label">Nome</label>
+          <input class="input" id="auth-name" placeholder="Il tuo nome" />
+        </div>
+        <div>
+          <label class="label">Email</label>
+          <input class="input" id="auth-email" type="email" placeholder="nome@email.com" />
+        </div>
+        <div>
+          <label class="label">Password</label>
+          <input class="input" id="auth-pass" type="password" placeholder="••••••••" />
+        </div>
+        <div id="reg-ref-wrap" style="display:none">
+          <label class="label">Codice referale (facoltativo — bonus fino al 15% al tuo invitatore)</label>
+          <input class="input" id="auth-ref" placeholder="Es. A1B2C3D4" />
+        </div>
+        <button class="btn btn-primary btn-block" id="auth-btn" onclick="doAuth()">Entra ⚡</button>
+        <p id="auth-error" style="color:#ff5c7a; font-size:14px; text-align:center"></p>
+        <p style="text-align:center; font-size:14px; color:var(--muted)">
+          <span id="auth-switch">Non hai un account? </span>
+          <a href="#" onclick="toggleAuth(); return false" style="color:var(--cyan)">Registrati</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ DASHBOARD ============ -->
+  <div id="dash-view" class="container" style="display:none">
+    <nav class="nav">
+      <div class="logo">QUANT<span>X</span> AI</div>
+      <div style="display:flex; gap:12px; align-items:center">
+        <a href="plans.html" class="btn btn-ghost" style="text-decoration:none">Piani ⚡</a>
+        <div class="streak">🔥 <span id="streak">0</span> giorni di serie</div>
+        <button class="btn btn-ghost" onclick="logout()">Esci</button>
+      </div>
+    </nav>
+
+    <div class="balance-box">
+      <div class="label">Saldo totale</div>
+      <div class="amount" id="balance">€0.00</div>
+      <div class="sub" id="balance-sub">+€0.00 oggi · rendita quantistica attiva</div>
+    </div>
+
+    <div class="dash-grid">
+      <div>
+        <div class="card" style="margin-bottom:20px">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
+            <h3>📈 Performance quantistica</h3>
+            <span class="streak" style="font-size:12px">+2.1%/giorno</span>
+          </div>
+          <div class="chart-wrap">
+            <svg class="chart-svg" viewBox="0 0 600 220" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#22ff88" stop-opacity="0.5"/>
+                  <stop offset="100%" stop-color="#22ff88" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <path class="chart-area" id="chart-area"></path>
+              <path class="chart-line" id="chart-line"></path>
+            </svg>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <h3>⚡ Segnali quantistici di oggi</h3>
+            <span id="signal-count" style="color:var(--muted); font-size:14px">0/3 attivati</span>
+          </div>
+          <p style="color:var(--muted); font-size:14px; margin-bottom:18px">
+            ⚠️ I segnali scadono a mezzanotte. Attivali tutti e 3 per non perdere il profitto.
+          </p>
+          <div id="signals"></div>
+        </div>
+
+        <!-- CARD FIDELTÀ / REFERRAL -->
+        <div class="card referral-card" style="margin-top:20px">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px">
+            <h3>🤝 Programma Fedeltà</h3>
+            <span class="streak" id="ref-stats" style="font-size:12px">0 amici · +€0.00</span>
+          </div>
+          <p style="color:var(--muted); font-size:14px; margin-bottom:16px; line-height:1.6">
+            Condividi il tuo link: guadagni <b style="color:var(--green)">fino al 15% su ogni deposito</b> dei tuoi invitati. A vita.
+          </p>
+          <div class="ref-link-box">
+            <span id="ref-link"></span>
+            <button class="btn btn-primary" style="padding:10px 18px; font-size:14px" onclick="copyRef()">Copia</button>
+          </div>
+          <a href="plans.html" style="color:var(--cyan); font-size:14px; text-decoration:none">⚡ Potenziati con un piano della squadra →</a>
+        </div>
+
+        <div class="card" style="margin-top:20px">
+          <h3 style="margin-bottom:16px">💰 Operazioni</h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px">
+            <button class="btn btn-green" onclick="openModal('deposit')">＋ Deposita</button>
+            <button class="btn btn-primary" onclick="openModal('withdraw')">↺ Prelievo</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h3 style="margin-bottom:16px">🔴 Live AI Signals</h3>
+          <div class="feed" id="feed"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL DEPOSIT ============ -->
+  <div class="modal-overlay" id="modal-deposit">
+    <div class="modal">
+      <h2>Deposita fondi</h2>
+      <div class="form">
+        <p style="color:var(--muted); font-size:14px">Invia l'importo al wallet QuantX per attivare la rendita quantistica. Riceverai la conferma via Telegram.</p>
+        <div>
+          <label class="label">Importo (€)</label>
+          <input class="input" id="dep-amount" type="number" placeholder="1000" />
+        </div>
+        <div>
+          <label class="label">Wallet di deposito (USDT TRC20)</label>
+          <input class="input" id="dep-wallet" readonly style="font-size:13px" value="TQxQuantum7X9F2kLmP4vR8sWzN1c" />
+        </div>
+        <button class="btn btn-green btn-block" onclick="doDeposit()">Conferma deposito</button>
+        <button class="btn btn-ghost btn-block" onclick="closeModal('deposit')">Annulla</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL WITHDRAW ============ -->
+  <div class="modal-overlay" id="modal-withdraw">
+    <div class="modal">
+      <h2>Prelievo fondi</h2>
+      <div class="form">
+        <p id="wd-hint" style="color:var(--muted); font-size:14px">I prelievi sotto €150 sono istantanei. Gli importi maggiori richiedono verifica.</p>
+        <div>
+          <label class="label">Importo (€)</label>
+          <input class="input" id="wd-amount" type="number" placeholder="100" />
+        </div>
+        <button class="btn btn-primary btn-block" onclick="doWithdraw()">Richiedi prelievo</button>
+        <button class="btn btn-ghost btn-block" onclick="closeModal('withdraw')">Annulla</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

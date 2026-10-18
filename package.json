@@ -1,0 +1,13 @@
+{
+  "name": "quantx",
+  "version": "1.0.0",
+  "description": "QuantX AI - Motore Quantistico di Trading",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "bot": "node telegram-bot.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
