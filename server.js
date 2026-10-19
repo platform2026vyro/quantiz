@@ -66,6 +66,26 @@ function migrate() {
   db.exec('CREATE INDEX IF NOT EXISTS idx_deposits_user ON deposits(user_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_withdrawals_user ON withdrawals(user_id)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id)');
+
+  // Posizioni: ogni acquisto di piano e' una posizione (si possono comprare piu' piani)
+  db.exec(`CREATE TABLE IF NOT EXISTS user_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    plan_id INTEGER NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_user_plans_user ON user_plans(user_id)');
+
+  // Riempie le posizioni con i depositi storici (una volta sola)
+  const nPos = db.prepare('SELECT COUNT(*) AS c FROM user_plans').get().c;
+  if (nPos === 0) {
+    const add = db.prepare("INSERT INTO user_plans (user_id, plan_id, amount, status, created_at) VALUES (?, ?, ?, 'active', ?)");
+    for (const d of db.prepare('SELECT user_id, amount, plan_id, created_at FROM deposits WHERE confirmed = 1 ORDER BY created_at').all()) {
+      add.run(d.user_id, d.plan_id, d.amount, d.created_at);
+    }
+  }
 }
 migrate();
 
@@ -184,13 +204,21 @@ app.post('/api/login', (req, res) => {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   db.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, token, expiresAt);
   
-  // Rendita giornaliera: UNA volta al giorno per utente (evita saldi gonfiati a ogni login)
+  // Rendita giornaliera: calcolata su ogni posizione attiva, una volta al giorno
   const today = new Date().toISOString().slice(0, 10);
   const plan = db.prepare('SELECT * FROM plans WHERE id = ?').get(user.plan_id) || { daily_yield_pct: 0, name: 'Starter' };
   let yieldAmount = 0;
   let newBalance = user.balance;
   if (user.last_yield_date !== today) {
-    yieldAmount = Math.round(user.balance * (plan.daily_yield_pct / 100) * 100) / 100;
+    const positions = userPositions(user.id);
+    if (positions.length) {
+      for (const pos of positions) {
+        yieldAmount += Math.round(pos.amount * (pos.daily_yield_pct / 100) * 100) / 100;
+      }
+    } else {
+      yieldAmount = Math.round(user.balance * (plan.daily_yield_pct / 100) * 100) / 100;
+    }
+    yieldAmount = Math.round(yieldAmount * 100) / 100;
     newBalance = Math.round((user.balance + yieldAmount) * 100) / 100;
     db.prepare('UPDATE users SET balance = ?, last_yield_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, today, user.id);
   }
@@ -396,7 +424,7 @@ app.get('/api/withdrawals', auth, (req, res) => {
   res.json({ withdrawals: rows.map(w => ({ amount: w.amount, fee: w.fee, status: w.status, date: w.created_at })) });
 });
 
-// ---------- API: ATTIVA PIANO ----------
+// ---------- API: ATTIVA PIANO (crea una posizione: piu' piani per utente) ----------
 const PLAN_SLUGS = { starter: 1, semi: 1, base: 1, pro: 2, pianta: 2, elite: 3, gold: 3, 'albero giovane': 3, vip: 4, titan: 4, 'quantum vip': 4, 'albero maturo': 4 };
 
 function findPlan(raw) {
@@ -419,13 +447,55 @@ function bestPlanForAmount(amt) {
     || db.prepare('SELECT * FROM plans ORDER BY min_deposit ASC LIMIT 1').get();
 }
 
+// Posizioni attive dell'utente
+function userPositions(userId) {
+  return db.prepare(`
+    SELECT up.id, up.plan_id, up.amount, up.status, up.created_at, p.name, p.daily_yield_pct
+    FROM user_plans up JOIN plans p ON p.id = up.plan_id
+    WHERE up.user_id = ? AND up.status = 'active' ORDER BY up.created_at DESC
+  `).all(userId);
+}
+
 app.post('/api/activate-plan', auth, (req, res) => {
   const plan = findPlan(req.body && req.body.plan);
   if (!plan) return res.status(400).json({ error: 'Piano non valido' });
-  db.prepare('UPDATE users SET plan_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(plan.id, req.uid);
-  res.json({
+
+  const cost = plan.min_deposit;
+  const balance = db.prepare('SELECT balance FROM users WHERE id = ?').get(req.uid).balance;
+  if (balance < cost) {
+    return res.status(400).json({
+      error: 'Capitale insufficiente per attivare ' + plan.name,
+      need: cost, balance: balance,
+      message: 'Deposita ' + cost + ' euro o piu nel pannello, poi attiva il piano.',
+    });
+  }
+
+  // Crea la posizione (il piano non e' unico: si possono attivare piu' piani)
+  const pos = db.prepare("INSERT INTO user_plans (user_id, plan_id, amount, status, created_at) VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP)")
+    .run(req.uid, plan.id, cost);
+
+  const left = Math.round((balance - cost) * 100) / 100;
+  db.prepare('UPDATE users SET balance = ?, plan_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(left, plan.id, req.uid);
+
+  res.status(201).json({
     plan: { id: plan.id, name: plan.name, minDeposit: plan.min_deposit, maxDeposit: plan.max_deposit, dailyYieldPct: plan.daily_yield_pct, refBonusPct: plan.ref_bonus_pct },
+    position: { id: pos.lastInsertRowid, amount: cost },
     user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid)),
+  });
+});
+
+// ---------- API: POSIZIONI (i piani attivi) ----------
+app.get('/api/positions', auth, (req, res) => {
+  const positions = userPositions(req.uid).map(r => ({
+    id: r.id, planId: r.plan_id, plan: r.name, amount: r.amount,
+    dailyYield: Math.round(r.amount * (r.daily_yield_pct / 100) * 100) / 100,
+    dailyYieldPct: r.daily_yield_pct, status: r.status, since: r.created_at,
+  }));
+  res.json({
+    positions,
+    count: positions.length,
+    totalInvested: Math.round(positions.reduce((a, p) => a + p.amount, 0) * 100) / 100,
+    dailyYield: Math.round(positions.reduce((a, p) => a + p.dailyYield, 0) * 100) / 100,
   });
 });
 
@@ -458,9 +528,9 @@ app.post('/api/deposit', auth, (req, res) => {
     VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
   `).run(req.uid, amt, plan.id);
 
-  // Aggiorna saldo utente + piano attivo
+  // Aggiorna il saldo (il piano si attiva a parte, cosi' se ne possono comprare piu')
   const newBalance = Math.round((req.user.balance + amt) * 100) / 100;
-  db.prepare('UPDATE users SET balance = ?, plan_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, plan.id, req.uid);
+  db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, req.uid);
 
   // Bonus al referrer: SOLO se l'invitato deposita davvero
   let referrerBonus = 0;

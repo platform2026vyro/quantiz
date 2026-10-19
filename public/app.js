@@ -89,6 +89,7 @@ async function enterDash() {
   loadReferrals();
   loadMyActivity();
   loadWithdrawalsList();
+  loadPositions();
   startFeed();
   drawChart();
 }
@@ -121,6 +122,23 @@ async function loadWithdrawalsList() {
       </span>
       <span class="neg">-${fmt(w.amount)}</span>
     </div>`).join('') : '<p style="color:var(--muted)">Nessun prelievo richiesto.</p>';
+}
+
+// ---------- PIANI ATTIVI (posizioni) ----------
+async function loadPositions() {
+  const d = await api('/api/positions');
+  if (d.error) return;
+  const line = $('positions-line');
+  if (!line) return;
+  if (!d.positions.length) {
+    line.innerHTML = '<a href="plans.html" class="btn btn-ghost" style="font-size:13px">Nessun piano attivo · attivane uno →</a>';
+    return;
+  }
+  const badges = d.positions.map(p =>
+    '<span class="badge" style="border-color:var(--accent-line); color:#8fd7ff">' + p.plan + ' · ' + fmt0(p.amount) + ' · +' + fmt(p.dailyYield) + '/g</span>'
+  ).join('');
+  line.innerHTML = '<span class="muted" style="font-size:13px">Piani attivi:</span>' + badges +
+    '<span class="badge success">totale ' + fmt0(d.dailyYield) + '/g</span>';
 }
 
 // ---------- FIDELTÀ: codice referral + link invito ----------

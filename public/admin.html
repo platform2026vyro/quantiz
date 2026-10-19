@@ -24,13 +24,8 @@
                  onkeydown="if(event.key==='Enter'){adminLogin(this)}" />
         </div>
         <button class="btn btn-primary btn-block" id="adm-btn" onclick="adminLogin(this)">Entra ⚡</button>
-        <button class="btn btn-ghost btn-block" onclick="toggleKeyMode()" id="key-toggle">Usa la chiave</button>
-        <div id="key-wrap" style="display:none">
-          <label class="label">Chiave</label>
-          <input class="input" id="adm-key" type="password" placeholder="chiave di accesso"
-                 onkeydown="if(event.key==='Enter'){adminLogin(this)}" />
-        </div>
         <p id="adm-error" style="color:#ff5c7a; font-size:14px; text-align:center"></p>
+        <p style="color:var(--muted); font-size:12px; text-align:center">Se sei già collegato come amministratore, la console si apre da sola.</p>
       </div>
     </div>
   </div>
@@ -41,6 +36,8 @@
       <div class="logo">QUANT<span>X</span> ADMIN</div>
       <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
         <span class="streak" style="font-size:12px" id="live-dot">● LIVE</span>
+        <a href="app.html" class="btn btn-ghost" style="text-decoration:none">← Torna al pannello</a>
+        <a href="index.html" class="btn btn-ghost" style="text-decoration:none">Sito</a>
         <button class="btn btn-ghost" onclick="refreshAll()">↻ Aggiorna</button>
         <button class="btn btn-ghost" onclick="adminLogout()">Esci</button>
       </div>

@@ -14,7 +14,10 @@ function toast(msg) {
   setTimeout(() => t.classList.remove('show'), 3200);
 }
 
-function currentAuth() { return localStorage.getItem(KEY) || ''; }
+function currentAuth() {
+  // Sessione unificata: se l'account e' gia' collegato nel pannello, si riusa quel token
+  return localStorage.getItem(KEY) || localStorage.getItem('quantx_token') || '';
+}
 
 async function api(path, opts = {}) {
   const auth = currentAuth();
@@ -25,19 +28,13 @@ async function api(path, opts = {}) {
   return res.json();
 }
 
-function toggleKeyMode() {
-  const w = $('key-wrap');
-  const visible = w.style.display !== 'none';
-  w.style.display = visible ? 'none' : 'block';
-  $('key-toggle').textContent = visible ? 'Usa la chiave' : 'Usa email e password';
-}
+function toggleKeyMode() { /* non serve piu': si entra solo con l'account */ }
 
 async function adminLogin(btn) {
   const email = ($('adm-email') && $('adm-email').value.trim()) || '';
   const password = ($('adm-pass') && $('adm-pass').value) || '';
-  const key = ($('adm-key') && $('adm-key').value) || '';
 
-  if (!email && !key) { $('adm-error').textContent = 'Inserisci email e password.'; return; }
+  if (!email) { $('adm-error').textContent = 'Inserisci email e password.'; return; }
 
   btn.disabled = true;
   const old = btn.textContent;
@@ -46,7 +43,7 @@ async function adminLogin(btn) {
   const data = await fetch('/api/admin/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(email ? { email, password } : { key }),
+    body: JSON.stringify({ email, password }),
   }).then(r => r.json()).catch(() => ({ error: 'Errore di rete' }));
 
   btn.disabled = false;
@@ -61,7 +58,7 @@ async function adminLogin(btn) {
 function adminLogout() {
   localStorage.removeItem(KEY);
   if (timer) clearInterval(timer);
-  location.href = 'index.html';
+  location.href = 'app.html';
 }
 
 function enterPanel() {

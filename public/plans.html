@@ -86,8 +86,8 @@
         Il rendimento parte immediatamente e il bonus viene riconosciuto a chi ti ha invitato.
       </p>
       <div class="wallet-box" id="plan-wallet">
-        <span class="wallet-label">Wallet attivazione (USDT TRC20)</span>
-        <span class="wallet-addr">TQxQuantum7X9F2kLmP4vR8sWzN1c</span>
+        <span class="wallet-label">Wallet attivazione (USDT BEP-20 · BNB Smart Chain)</span>
+        <span class="wallet-addr">0x2320a9e89C988dC605796e74adFa0e5a4A1deeA3</span>
       </div>
     </div>
 
@@ -104,8 +104,8 @@
       <div class="form">
         <p id="plan-modal-text" style="color:var(--muted); font-size:14px; line-height:1.6"></p>
         <div>
-          <label class="label">Wallet QuantX (USDT TRC20)</label>
-          <input class="input" id="plan-modal-wallet" readonly style="font-size:13px" value="TQxQuantum7X9F2kLmP4vR8sWzN1c" />
+          <label class="label">Wallet QuantX (USDT BEP-20 · BNB Smart Chain)</label>
+          <input class="input" id="plan-modal-wallet" readonly style="font-size:12px" value="0x2320a9e89C988dC605796e74adFa0e5a4A1deeA3" />
         </div>
         <button class="btn btn-primary btn-block" onclick="confirmPlan(this)">Ho inviato il pagamento</button>
         <button class="btn btn-ghost btn-block" onclick="document.getElementById('modal-plan').classList.remove('show')">Annulla</button>
@@ -132,7 +132,8 @@
       document.getElementById('plan-modal-title').textContent = 'Piano ' + p.name;
       document.getElementById('plan-modal-text').textContent =
         'Il piano ' + p.name + ' prevede un investimento ' + range + ' e un rendimento del +' + String(p.yield).replace('.', ',') +
-        '% al giorno, con bonus amici del ' + p.ref + '%. Invia l\'importo al wallet QuantX qui sotto: appena il pagamento è confermato, il piano viene attivato sul tuo account.';
+        '% al giorno, con bonus amici del ' + p.ref + '%. L\'importo viene scalato dal tuo saldo: prima deposita il capitale ' +
+        '(dal pannello o con l\'indirizzo qui sotto), poi attivi il piano. Puoi attivare piu\' piani: sono posizioni indipendenti, ciascuna con il proprio rendimento.';
       document.getElementById('modal-plan').classList.add('show');
     }
 
@@ -156,13 +157,14 @@
       btn.disabled = false; btn.textContent = old;
       if (data.error) {
         const t = document.getElementById('toast');
-        t.textContent = data.error; t.classList.add('show');
-        setTimeout(() => t.classList.remove('show'), 3000);
+        t.textContent = data.message || data.error; t.classList.add('show');
+        document.getElementById('plan-modal-text').textContent = (data.message || data.error) + ' Ti porto al pannello...';
+        setTimeout(() => { location.href = 'app.html'; }, 1800);
         return;
       }
       document.getElementById('modal-plan').classList.remove('show');
       const t = document.getElementById('toast');
-      t.textContent = '✅ Piano ' + data.plan.name + ' richiesto. Ti avvisiamo appena è attivo.';
+      t.textContent = 'Piano ' + data.plan.name + ' attivato: ' + data.position.amount + ' EUR in posizione.';
       t.classList.add('show');
       setTimeout(() => { location.href = 'app.html'; }, 2200);
     }
