@@ -13,18 +13,18 @@
       <div class="logo" style="margin-bottom:22px"><span class="mark">Q</span> QuantX <span>AI</span></div>
       <h2 id="auth-title" style="font-size:24px; margin-bottom:6px">Accedi al pannello</h2>
       <p id="auth-sub" class="muted" style="font-size:13.5px; margin-bottom:20px">Gestisci piano, segnali e prelievi da un unico posto.</p>
-      <div class="form">
+      <div class="form" autocomplete="off">
         <div id="reg-name-wrap" style="display:none">
           <label class="label" for="auth-name">Nome</label>
-          <input class="input" id="auth-name" placeholder="Come ti chiami" autocomplete="name" />
+          <input class="input" id="auth-name" placeholder="Come ti chiamo" autocomplete="off" />
         </div>
         <div>
           <label class="label" for="auth-email">Email</label>
-          <input class="input" id="auth-email" type="email" placeholder="nome@email.com" autocomplete="email" />
+          <input class="input" id="auth-email" type="email" placeholder="nome@email.com" autocomplete="off" />
         </div>
         <div>
           <label class="label" for="auth-pass">Password</label>
-          <input class="input" id="auth-pass" type="password" placeholder="••••••••" autocomplete="current-password" />
+          <input class="input" id="auth-pass" type="password" placeholder="••••••••" autocomplete="new-password" />
         </div>
         <div id="reg-ref-wrap" style="display:none">
           <label class="label" for="auth-ref">Codice invito</label>
@@ -76,6 +76,25 @@
       </div>
     </div>
 
+    <!-- INVITO (in evidenza) -->
+    <div class="card invite-card" style="margin-bottom:18px">
+      <div class="card-head" style="margin-bottom:12px">
+        <div>
+          <h3 style="margin-bottom:4px">Invita e guadagna</h3>
+          <span class="hint">Ricevi dal 10% al 17% su ogni deposito dei tuoi invitati</span>
+        </div>
+        <span class="badge info" id="ref-stats">0 inviti</span>
+      </div>
+      <div class="ref-link-box">
+        <span id="ref-link">—</span>
+        <button class="btn btn-primary btn-sm" onclick="copyRef()">Copia</button>
+        <button class="btn btn-secondary btn-sm" onclick="shareRef('wa')">WhatsApp</button>
+        <button class="btn btn-secondary btn-sm" onclick="shareRef('tg')">Telegram</button>
+        <a href="amici.html" class="btn btn-ghost btn-sm">Dettagli</a>
+      </div>
+      <p class="help" style="margin-top:10px">Il bonus si accredita quando l'invitato attiva un piano. Ogni utente puo' comprare piu' piani: ne risulti uno per acquisto.</p>
+    </div>
+
     <div class="grid-2">
       <!-- COLONNA PRINCIPALE -->
       <div>
@@ -107,6 +126,22 @@
           <div id="signals">
             <div class="skeleton w80"></div>
             <div class="skeleton w60"></div>
+          </div>
+        </div>
+
+        <!-- PIANI ATTIVI -->
+        <div class="card" style="margin-bottom:18px">
+          <div class="card-head">
+            <div>
+              <h3 style="margin-bottom:4px">I tuoi piani</h3>
+              <span class="hint">Ogni posizione genera il proprio rendimento</span>
+            </div>
+            <span class="badge info" id="positions-badge">0 piani attivi</span>
+          </div>
+          <div id="positions-list"><div class="skeleton w60"></div></div>
+          <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="openModal('deposit')">Deposita capitale</button>
+            <button class="btn btn-primary btn-sm" onclick="openModal('buyplan')">Attiva un piano</button>
           </div>
         </div>
 
@@ -148,24 +183,6 @@
           <div class="feed" id="feed"></div>
         </div>
 
-        <!-- REFERRAL -->
-        <div class="card" style="margin-bottom:18px">
-          <div class="card-head">
-            <h3>Programma referral</h3>
-            <span class="badge info" id="ref-stats">0 inviti</span>
-          </div>
-          <p class="muted" style="font-size:13px">Condividi il tuo link: il bonus si accredita quando l'invitato attiva un piano.</p>
-          <div class="ref-link-box">
-            <span id="ref-link">—</span>
-            <button class="btn btn-secondary btn-sm" onclick="copyRef()">Copia</button>
-          </div>
-          <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap">
-            <button class="btn btn-ghost btn-sm" onclick="shareRef('wa')">WhatsApp</button>
-            <button class="btn btn-ghost btn-sm" onclick="shareRef('tg')">Telegram</button>
-            <a href="amici.html" class="btn btn-ghost btn-sm">Dettagli</a>
-          </div>
-        </div>
-
         <!-- PRELIEVI -->
         <div class="card">
           <div class="card-head"><h3>Prelievi</h3></div>
@@ -193,16 +210,41 @@
           Invia l'importo al wallet QuantX, poi conferma. Il saldo viene accreditato appena il team verifica la transazione.
         </p>
         <div>
-          <label class="label" for="dep-amount">Importo (EUR)</label>
-          <input class="input" id="dep-amount" type="number" min="10" step="1" placeholder="100" />
-          <p class="help">Minimo 10 euro. Il piano viene impostato automaticamente sull'importo.</p>
+          <label class="label" for="dep-plan">Piano</label>
+          <select class="input" id="dep-plan"></select>
         </div>
         <div>
-          <label class="label">Wallet di deposito (USDT TRC20)</label>
-          <input class="input mono" readonly value="TQxQuantum7X9F2kLmP4vR8sWzN1c" onclick="this.select()" />
+          <label class="label" for="dep-amount">Importo (EUR)</label>
+          <input class="input" id="dep-amount" type="number" min="10" step="1" placeholder="100" />
+          <p class="help">Minimo 10 euro. Il capitale resta sul saldo e lo attivi come piano quando vuoi.</p>
+        </div>
+        <div>
+          <label class="label">Wallet di deposito (USDT BEP-20 · BNB Smart Chain)</label>
+          <input class="input mono" readonly value="0x2320a9e89C988dC605796e74adFa0e5a4A1deeA3" onclick="this.select()" />
+          <p class="help">Invia USDT sulla rete BNB Smart Chain (BEP-20). Non inviare su altre reti.</p>
         </div>
         <button class="btn btn-primary btn-block" onclick="doDeposit(this)">Conferma deposito</button>
         <button class="btn btn-ghost btn-block" onclick="closeModal('deposit')">Annulla</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL ACQUISTO PIANO ============ -->
+  <div class="modal-overlay" id="modal-buyplan">
+    <div class="modal">
+      <h2>Attiva un piano</h2>
+      <div class="form">
+        <p class="muted" style="font-size:13.5px; margin:0">
+          Attivando un piano il capitale passa dal saldo a una posizione attiva e da lì in poi genera il rendimento.
+          Puoi attivare piu' piani: sono indipendenti tra loro.
+        </p>
+        <div>
+          <label class="label" for="buy-plan">Piano</label>
+          <select class="input" id="buy-plan" onchange="updateBuyHint()"></select>
+          <p class="help" id="buy-hint">—</p>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="doBuyPlan(this)">Attiva piano</button>
+        <button class="btn btn-ghost btn-block" onclick="closeModal('buyplan')">Annulla</button>
       </div>
     </div>
   </div>

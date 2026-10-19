@@ -109,10 +109,23 @@ async function enterDash() {
   if (me.user.isAdmin) addAdminLink();
   renderSignals(me.today || []);
   loadPortfolio();
+  loadPositions();
   loadTransactions();
   loadReferrals();
   loadWithdrawals();
+  loadPlans();
   startFeed();
+
+  // Arrivo da "Attiva piano": apre il deposito con il piano gia' selezionato
+  const wantPlan = urlParams.get('plan');
+  if (wantPlan) {
+    loadPlans().then(() => {
+      const sel = $('dep-plan');
+      const p = allPlans.find(x => String(x.id) === String(wantPlan));
+      if (p) { sel.value = p.id; $('dep-amount').value = p.minDeposit; }
+      openModal('deposit');
+    });
+  }
 }
 
 function addAdminLink() {
@@ -164,9 +177,13 @@ async function loadPortfolio() {
   drawChart(p.series);
   $('kpi-net').textContent = (p.netProfit >= 0 ? '+' : '') + fmt0(p.netProfit);
   $('kpi-net-sub').textContent = fmt0(p.deposited) + ' depositati · ' + fmt0(p.withdrawn) + ' prelievati';
-  $('balance-sub').textContent = 'Piano ' + p.plan.name + ' · rendimento ' + String(p.plan.dailyYieldPct).replace('.', ',') + '% al giorno';
-  $('plan-badge').textContent = p.plan.name;
+  const yieldTxt = p.activePlans ? fmt0(p.dailyYield) + ' al giorno su ' + fmt0(p.totalInvested) : 'nessun piano attivo';
+  $('balance-sub').textContent = p.activePlans
+    ? p.activePlans + (p.activePlans === 1 ? ' piano attivo · ' : ' piani attivi · ') + yieldTxt
+    : 'Nessun piano attivo: deposita e attiva un piano';
+  $('plan-badge').textContent = p.activePlans ? p.activePlans + (p.activePlans === 1 ? ' piano' : ' piani') : 'nessun piano';
   $('wd-hint').textContent = 'Il saldo disponibile: ' + fmt(currentBalance);
+  updateBuyHint();
 }
 
 // ---------- SEGNALI ----------
@@ -251,6 +268,8 @@ async function loadReferrals() {
   $('ref-stats').textContent = d.count + ' inviti · ' + d.activeCount + ' attivi';
   $('kpi-ref').textContent = fmt0(d.earned);
   $('kpi-ref-sub').textContent = d.count + ' inviti, ' + d.activeCount + ' con piano attivo';
+  const link = $('ref-link');
+  if (link) link.textContent = location.origin + '/app.html?ref=' + d.code;
 }
 
 function copyRef() {
@@ -313,21 +332,96 @@ function startFeed() {
 function openModal(id) { $('modal-' + id).classList.add('show'); }
 function closeModal(id) { $('modal-' + id).classList.remove('show'); }
 
+let allPlans = [];
+
+async function loadPlans() {
+  const d = await api('/api/plans');
+  allPlans = d || [];
+  const opts = allPlans.map(p => '<option value="' + p.id + '">' + p.name + ' — da ' + fmt0(p.minDeposit) + ' · ' + String(p.dailyYieldPct).replace('.', ',') + '%/g · bonus ' + p.refBonusPct + '%</option>').join('');
+  const sel = $('dep-plan');
+  const buy = $('buy-plan');
+  if (sel) sel.innerHTML = opts;
+  if (buy) buy.innerHTML = opts;
+  const want = new URLSearchParams(location.search).get('plan');
+  if (want && sel) {
+    const p = allPlans.find(x => String(x.id) === String(want));
+    if (p) { sel.value = p.id; $('dep-amount').value = p.minDeposit; }
+  }
+  updateBuyHint();
+}
+
+function updateBuyHint() {
+  const sel = $('buy-plan');
+  const hint = $('buy-hint');
+  if (!sel || !hint) return;
+  const p = allPlans.find(x => String(x.id) === sel.value);
+  if (!p) { hint.textContent = '—'; return; }
+  const enough = currentBalance >= p.minDeposit;
+  hint.textContent = 'Costo: ' + fmt0(p.minDeposit) + ' · rendimento ' + String(p.dailyYieldPct).replace('.', ',') + '% al giorno (' + fmt0(Math.round(p.minDeposit * p.dailyYieldPct / 100 * 100) / 100) + '/g) · ' +
+    (enough ? 'saldo sufficiente' : 'saldo insufficiente: deposita ' + fmt0(p.minDeposit - currentBalance));
+}
+
+async function doBuyPlan(btn) {
+  const planId = $('buy-plan').value;
+  if (!planId) return;
+  const data = await withBtn(btn, 'Attivazione...', () =>
+    api('/api/activate-plan', { method: 'POST', body: JSON.stringify({ plan: planId }) })
+  );
+  if (data.error) {
+    toast(data.error + (data.message ? ' — ' + data.message : ''), 'err');
+    return;
+  }
+  closeModal('buyplan');
+  toast('Piano ' + data.plan.name + ' attivato: ' + fmt0(data.position.amount) + ' in posizione', 'ok');
+  currentBalance = data.user.balance;
+  animateBalance($('balance'), data.user.balance);
+  loadPortfolio();
+  loadPositions();
+  loadTransactions();
+}
+
+async function loadPositions() {
+  const d = await api('/api/positions');
+  if (d.error) return;
+  const box = $('positions-list');
+  const badge = $('positions-badge');
+  if (badge) badge.textContent = d.count + (d.count === 1 ? ' piano attivo' : ' piani attivi');
+  if (!box) return;
+  if (!d.positions.length) {
+    box.innerHTML = '<div class="empty"><strong>Nessun piano attivo</strong>Deposita capitale e attiva un piano per iniziare a generare rendimenti.</div>';
+    return;
+  }
+  box.innerHTML = d.positions.map(p => `
+    <div class="activity-item">
+      <div class="tx">${p.plan}<div class="when">${fmt0(p.amount)} investiti · attivo dal ${new Date(String(p.since).replace(' ', 'T') + 'Z').toLocaleDateString('it-IT')}</div></div>
+      <div style="text-align:right">
+        <div class="pos">${fmt(p.dailyYield)}</div>
+        <div class="when">al giorno</div>
+      </div>
+    </div>`).join('') +
+    '<div class="activity-item" style="border-top:1px solid var(--border)">' +
+      '<div class="tx"><b>Totale investito</b><div class="when">rendimento giornaliero complessivo</div></div>' +
+      '<div style="text-align:right"><div class="pos">' + fmt(d.dailyYield) + '</div><div class="when">al giorno</div></div>' +
+    '</div>';
+}
+
 async function doDeposit(btn) {
   const amount = $('dep-amount').value;
   if (!amount || Number(amount) < 10) return toast('Importo minimo 10 euro', 'err');
+  const planId = $('dep-plan') ? $('dep-plan').value : undefined;
   const data = await withBtn(btn, 'Verifica pagamento...', async () => {
     await new Promise(r => setTimeout(r, 900));
-    return api('/api/deposit', { method: 'POST', body: JSON.stringify({ amount }) });
+    return api('/api/deposit', { method: 'POST', body: JSON.stringify({ amount, planId }) });
   });
   if (data.error) return toast(data.error, 'err');
   closeModal('deposit');
   $('dep-amount').value = '';
-  toast('Deposito di ' + fmt0(amount) + ' registrato sul piano ' + (data.deposit ? data.deposit.plan : ''), 'ok');
+  toast('Deposito di ' + fmt0(amount) + ' confermato', 'ok');
   currentBalance = data.user.balance;
   animateBalance($('balance'), data.user.balance);
   loadPortfolio();
   loadTransactions();
+  loadPositions();
 }
 
 async function doWithdraw(btn) {
@@ -354,6 +448,7 @@ function logout() { localStorage.removeItem(TOKEN_KEY); location.href = 'index.h
 window.addEventListener('DOMContentLoaded', () => {
   const savedRef = localStorage.getItem(REF_KEY);
   if (savedRef) $('auth-ref').value = savedRef;
+  loadPlans();
   if (!token) {
     $('auth-view').style.display = 'flex';
     applyAuthMode(registerMode);

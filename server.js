@@ -35,6 +35,28 @@ db.exec(`CREATE TABLE IF NOT EXISTS ledger (
 db.exec('CREATE INDEX IF NOT EXISTS idx_ledger_user ON ledger(user_id, created_at)');
 db.exec('CREATE INDEX IF NOT EXISTS idx_ledger_kind ON ledger(kind)');
 
+// Posizioni: un utente puo' comprare PIU' piani (uno per acquisto)
+db.exec(`CREATE TABLE IF NOT EXISTS user_plans (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  plan_id INTEGER NOT NULL,
+  amount DECIMAL(15,2) NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_user_plans_user ON user_plans(user_id)');
+
+// Riempie le posizioni con i depositi storici (una volta sola)
+function backfillPositions() {
+  const n = db.prepare('SELECT COUNT(*) AS c FROM user_plans').get().c;
+  if (n > 0) return;
+  const add = db.prepare("INSERT INTO user_plans (user_id, plan_id, amount, status, created_at) VALUES (?, ?, ?, 'active', ?)");
+  for (const d of db.prepare('SELECT user_id, amount, plan_id, created_at FROM deposits WHERE confirmed = 1 ORDER BY created_at').all()) {
+    add.run(d.user_id, d.plan_id, d.amount, d.created_at);
+  }
+}
+backfillPositions();
+
 // Riempie il ledger con i movimenti storici (una volta sola)
 function backfillLedger() {
   const done = db.prepare('SELECT COUNT(*) AS c FROM ledger').get().c;
@@ -293,15 +315,28 @@ app.post('/api/login', (req, res) => {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   db.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, token, expiresAt);
   
-  // Rendita giornaliera: UNA volta al giorno per utente (evita saldi gonfiati a ogni login)
+  // Rendita giornaliera: calcolata su ogni posizione attiva, una volta al giorno
   const today = new Date().toISOString().slice(0, 10);
   const plan = db.prepare('SELECT * FROM plans WHERE id = ?').get(user.plan_id) || { daily_yield_pct: 0, name: 'Starter' };
   let yieldAmount = 0;
   let newBalance = user.balance;
   if (user.last_yield_date !== today) {
-    yieldAmount = Math.round(user.balance * (plan.daily_yield_pct / 100) * 100) / 100;
+    const positions = db.prepare(`
+      SELECT up.amount, p.daily_yield_pct FROM user_plans up JOIN plans p ON p.id = up.plan_id
+      WHERE up.user_id = ? AND up.status = 'active'
+    `).all(user.id);
+    if (positions.length) {
+      for (const pos of positions) {
+        yieldAmount += Math.round(pos.amount * (pos.daily_yield_pct / 100) * 100) / 100;
+      }
+    } else {
+      // Nessuna posizione: si rende sul saldo depositato
+      yieldAmount = Math.round(user.balance * (plan.daily_yield_pct / 100) * 100) / 100;
+    }
+    yieldAmount = Math.round(yieldAmount * 100) / 100;
     newBalance = Math.round((user.balance + yieldAmount) * 100) / 100;
     db.prepare('UPDATE users SET balance = ?, last_yield_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, today, user.id);
+    if (yieldAmount > 0) logLedger(user.id, 'yield', yieldAmount, newBalance, 'rendita giornaliera');
   }
 
   const networkInfo = getNetworkInfo(user.id);
@@ -408,6 +443,7 @@ function ensureSignals(userId) {
 function publicUser(user) {
   const plan = db.prepare('SELECT name, daily_yield_pct, ref_bonus_pct FROM plans WHERE id = ?').get(user.plan_id);
   const ownDeposits = db.prepare('SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE user_id = ? AND confirmed = 1').get(user.id).s;
+  const pos = db.prepare("SELECT COUNT(*) AS c, COALESCE(SUM(amount),0) AS s FROM user_plans WHERE user_id = ? AND status = 'active'").get(user.id);
   const rows = db.prepare('SELECT claimed FROM signals WHERE user_id = ?').all(user.id);
   let streak = 0;
   for (const r of rows) { try { if (JSON.parse(r.claimed).length >= CONFIG.SIGNALS_PER_DAY) streak++; } catch (e) { /* ignora */ } }
@@ -421,6 +457,8 @@ function publicUser(user) {
     plan: user.plan_id, planName: plan ? plan.name : 'Starter',
     planYieldPct: plan ? plan.daily_yield_pct : 0,
     planRefBonusPct: plan ? plan.ref_bonus_pct : 0,
+    activePlans: pos.c,
+    investedInPlans: pos.s,
     isAdmin: !!user.is_admin,
   };
 }
@@ -451,6 +489,10 @@ function generateSignalProfit(userId, signalIndex) {
   const def = SIGNAL_DEFS[signalIndex];
   const sig = buildSignal(userId, day, def);
 
+  // Il rendimento si calcola sul capitale investito nei piani, se presente
+  const invested = db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM user_plans WHERE user_id = ? AND status = 'active'").get(userId).s;
+  const base = invested > 0 ? invested : user.balance;
+
   // Solo chi ha referral attivo + deposito ottiene il rendimento pieno
   const hasReferrer = db.prepare('SELECT COUNT(*) as count FROM referrals WHERE referee_id = ? AND active = 1').get(userId).count > 0;
   const hasDeposit = db.prepare('SELECT COUNT(*) as count FROM deposits WHERE user_id = ? AND confirmed = 1').get(userId).count > 0;
@@ -460,7 +502,7 @@ function generateSignalProfit(userId, signalIndex) {
     ? (CONFIG.PROFIT_MIN + ((sig.confidence - 88) / 100) * (CONFIG.PROFIT_MAX - CONFIG.PROFIT_MIN)) / 100
     : (CONFIG.LOSS_MAX + ((sig.confidence - 88) / 100) * (CONFIG.LOSS_MIN - CONFIG.LOSS_MAX)) / 100;
 
-  return Math.round(user.balance * pct * scale * 100) / 100;
+  return Math.round(base * pct * scale * 100) / 100;
 }
 
 app.post('/api/claim-signal', auth, (req, res) => {
@@ -565,13 +607,64 @@ function bestPlanForAmount(amt) {
     || db.prepare('SELECT * FROM plans ORDER BY min_deposit ASC LIMIT 1').get();
 }
 
+// ---------- API: ACQUISTO PIANO (crea una posizione) ----------
+// Si puo' acquistare piu' piani: ogni acquisto e' una posizione separata
 app.post('/api/activate-plan', auth, (req, res) => {
   const plan = findPlan(req.body && req.body.plan);
   if (!plan) return res.status(400).json({ error: 'Piano non valido' });
-  db.prepare('UPDATE users SET plan_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(plan.id, req.uid);
-  res.json({
+
+  const cost = plan.min_deposit;
+  const balance = db.prepare('SELECT balance FROM users WHERE id = ?').get(req.uid).balance;
+  if (balance < cost) {
+    return res.status(400).json({
+      error: 'Capitale insufficiente per attivare ' + plan.name,
+      need: cost, balance: balance,
+      message: 'Deposita ' + cost + ' euro o piu, poi attiva il piano.',
+    });
+  }
+
+  // Crea la posizione
+  const pos = db.prepare("INSERT INTO user_plans (user_id, plan_id, amount, status, created_at) VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP)")
+    .run(req.uid, plan.id, cost);
+
+  // Scala il saldo e tieni traccia
+  const left = Math.round((balance - cost) * 100) / 100;
+  db.prepare('UPDATE users SET balance = ?, plan_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(left, plan.id, req.uid);
+  logLedger(req.uid, 'plan', -cost, left, 'attivazione piano ' + plan.name);
+
+  res.status(201).json({
     plan: { id: plan.id, name: plan.name, minDeposit: plan.min_deposit, maxDeposit: plan.max_deposit, dailyYieldPct: plan.daily_yield_pct, refBonusPct: plan.ref_bonus_pct },
+    position: { id: pos.lastInsertRowid, amount: cost },
     user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid)),
+  });
+});
+
+// ---------- API: POSIZIONI (i piani attivi) ----------
+app.get('/api/positions', auth, (req, res) => {
+  const rows = db.prepare(`
+    SELECT up.id, up.plan_id, up.amount, up.status, up.created_at, p.name, p.daily_yield_pct, p.ref_bonus_pct
+    FROM user_plans up JOIN plans p ON p.id = up.plan_id
+    WHERE up.user_id = ? ORDER BY up.created_at DESC
+  `).all(req.uid);
+
+  const positions = rows.map(r => ({
+    id: r.id,
+    planId: r.plan_id,
+    plan: r.name,
+    amount: r.amount,
+    dailyYield: Math.round(r.amount * (r.daily_yield_pct / 100) * 100) / 100,
+    dailyYieldPct: r.daily_yield_pct,
+    refBonusPct: r.ref_bonus_pct,
+    status: r.status,
+    since: r.created_at,
+  }));
+
+  const active = positions.filter(p => p.status === 'active');
+  res.json({
+    positions,
+    count: active.length,
+    totalInvested: Math.round(active.reduce((a, p) => a + p.amount, 0) * 100) / 100,
+    dailyYield: Math.round(active.reduce((a, p) => a + p.dailyYield, 0) * 100) / 100,
   });
 });
 
@@ -622,6 +715,18 @@ app.get('/api/portfolio', auth, (req, res) => {
 
   const plan = db.prepare('SELECT * FROM plans WHERE id = ?').get(req.user.plan_id) || { daily_yield_pct: 0, name: 'Starter' };
 
+  const positions = db.prepare(`
+    SELECT up.id, up.plan_id, up.amount, up.status, up.created_at, p.name, p.daily_yield_pct, p.ref_bonus_pct
+    FROM user_plans up JOIN plans p ON p.id = up.plan_id
+    WHERE up.user_id = ? ORDER BY up.created_at DESC
+  `).all(req.uid).map(r => ({
+    id: r.id, planId: r.plan_id, plan: r.name, amount: r.amount,
+    dailyYield: Math.round(r.amount * (r.daily_yield_pct / 100) * 100) / 100,
+    dailyYieldPct: r.daily_yield_pct, refBonusPct: r.ref_bonus_pct,
+    status: r.status, since: r.created_at,
+  }));
+  const active = positions.filter(p => p.status === 'active');
+
   res.json({
     balance: req.user.balance,
     deposited: deposits,
@@ -629,6 +734,10 @@ app.get('/api/portfolio', auth, (req, res) => {
     pending,
     netProfit: Math.round((req.user.balance + withdrawn - deposits) * 100) / 100,
     series,
+    positions,
+    activePlans: active.length,
+    totalInvested: Math.round(active.reduce((a, p) => a + p.amount, 0) * 100) / 100,
+    dailyYield: Math.round(active.reduce((a, p) => a + p.dailyYield, 0) * 100) / 100,
     plan: { id: plan.id, name: plan.name, dailyYieldPct: plan.daily_yield_pct, refBonusPct: plan.ref_bonus_pct },
     signals: daySignals(req.uid, new Date().toISOString().slice(0, 10)),
   });
@@ -651,29 +760,24 @@ app.get('/api/transactions', auth, (req, res) => {
   });
 });
 
-// ---------- API: DEPOSITO ----------
+// ---------- API: DEPOSITO (aggiunge capitale) ----------
 app.post('/api/deposit', auth, (req, res) => {
   const { amount } = req.body;
   const amt = parseFloat(amount);
-  if (!amt || amt <= 0) return res.status(400).json({ error: 'Importo invalido' });
+  if (!amt || amt <= 0) return res.status(400).json({ error: 'Importo non valido' });
 
-  // Piano scelto esplicitamente, altrimenti il piu' alto attivabile con questo importo
+  // Il piano indicato serve al calcolo del bonus referral, non crea ancora la posizione
   const chosen = findPlan(req.body && req.body.planId);
   const plan = chosen || bestPlanForAmount(amt);
-  if (amt < plan.min_deposit) {
-    return res.status(400).json({ error: 'Importo minimo per ' + plan.name + ': €' + plan.min_deposit });
-  }
 
-  // Inserisci deposito
   db.prepare(`
     INSERT INTO deposits (user_id, amount, plan_id, confirmed, created_at)
     VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
   `).run(req.uid, amt, plan.id);
 
-  // Aggiorna saldo utente + piano attivo
   const newBalance = Math.round((req.user.balance + amt) * 100) / 100;
-  db.prepare('UPDATE users SET balance = ?, plan_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, plan.id, req.uid);
-  logLedger(req.uid, 'deposit', amt, newBalance, plan.name);
+  db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, req.uid);
+  logLedger(req.uid, 'deposit', amt, newBalance, 'deposito su ' + plan.name);
 
   // Bonus al referrer: SOLO se l'invitato deposita davvero
   let referrerBonus = 0;
@@ -692,7 +796,7 @@ app.post('/api/deposit', auth, (req, res) => {
   }
 
   res.status(201).json({
-    message: 'Deposito confermato. Fondi in elaborazione.',
+    message: 'Deposito confermato. Capitale aggiunto al saldo.',
     user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid)),
     deposit: { amount: amt, plan: plan.name, referrerBonus: referrerBonus },
   });

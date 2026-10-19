@@ -13,23 +13,19 @@
       <div class="logo" style="margin-bottom:22px"><span class="mark">Q</span> QuantX <span>Console</span></div>
       <h2 style="font-size:24px; margin-bottom:6px">Area riservata</h2>
       <p class="muted" style="font-size:13.5px; margin-bottom:20px">Accesso amministratore.</p>
-      <div class="form">
+      <div class="form" autocomplete="off">
         <div>
           <label class="label" for="adm-email">Email</label>
-          <input class="input" id="adm-email" type="email" placeholder="email" autocomplete="username" />
+          <input class="input" id="adm-email" type="email" placeholder="email" autocomplete="off" />
         </div>
         <div>
           <label class="label" for="adm-pass">Password</label>
-          <input class="input" id="adm-pass" type="password" placeholder="••••••••" autocomplete="current-password"
+          <input class="input" id="adm-pass" type="password" placeholder="••••••••" autocomplete="new-password"
                  onkeydown="if(event.key==='Enter'){adminLogin(this)}" />
         </div>
         <button class="btn btn-primary btn-block" id="adm-btn" onclick="adminLogin(this)">Accedi</button>
-        <button class="btn btn-ghost btn-block" onclick="toggleKeyMode()" id="key-toggle">Usa la chiave</button>
-        <div id="key-wrap" style="display:none">
-          <label class="label" for="adm-key">Chiave</label>
-          <input class="input mono" id="adm-key" type="password" placeholder="chiave" onkeydown="if(event.key==='Enter'){adminLogin(this)}" />
-        </div>
         <p id="adm-error" class="error-text"></p>
+        <p class="help text-center">Se sei gia' collegato come amministratore, la console si apre automaticamente.</p>
       </div>
     </div>
   </div>
@@ -40,6 +36,8 @@
       <div class="logo"><span class="mark">Q</span> QuantX <span>Console</span></div>
       <div class="nav-links">
         <span class="badge success" id="live-dot"><span class="dot live"></span> live</span>
+        <a href="app.html" class="btn btn-secondary">Torna al pannello</a>
+        <a href="index.html" class="btn btn-ghost">Sito</a>
         <button class="btn btn-ghost" onclick="refreshAll()">Aggiorna</button>
         <button class="btn btn-ghost" onclick="adminLogout()">Esci</button>
       </div>

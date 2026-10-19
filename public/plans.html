@@ -14,7 +14,6 @@
         <a href="index.html" class="btn btn-ghost">Home</a>
         <a href="amici.html" class="btn btn-ghost">Programma referral</a>
         <a href="app.html" class="btn btn-secondary">Accedi</a>
-        <a href="app.html?mode=register" class="btn btn-primary">Apri un account</a>
       </div>
     </nav>
 
@@ -25,9 +24,14 @@
         Il rendimento giornaliero e la quota di bonus sugli inviti crescono con il piano.
         Non ci sono canoni: l'importo si versa una volta e resta investito.
       </p>
+      <p class="help" style="margin-top:4px">
+        Ogni account puo' attivare piu' piani: sono posizioni indipendenti, ciascuna con il proprio rendimento.
+      </p>
     </section>
 
-    <div class="plans-grid" id="plans"></div>
+    <div class="plans-grid" id="plans">
+      <div class="skeleton w60"></div>
+    </div>
 
     <!-- CONFRONTO -->
     <div class="card" style="margin-bottom:30px">
@@ -37,10 +41,10 @@
           <thead>
             <tr>
               <th>Caratteristica</th>
-              <th class="right">Starter</th>
-              <th class="right">Pro</th>
-              <th class="right">Elite</th>
-              <th class="right">Quantum VIP</th>
+              <th class="right" id="h0">Starter</th>
+              <th class="right" id="h1">Pro</th>
+              <th class="right" id="h2">Elite</th>
+              <th class="right" id="h3">Quantum VIP</th>
             </tr>
           </thead>
           <tbody><tr><td colspan="5" class="muted">Caricamento...</td></tr></tbody>
@@ -48,32 +52,32 @@
       </div>
     </div>
 
-    <!-- COME FUNZIONA L'ATTIVAZIONE -->
+    <!-- COME FUNZIONA -->
     <div class="card" style="margin-bottom:30px">
       <div class="card-head"><h3>Come si attiva un piano</h3></div>
       <div class="steps">
         <div class="step">
           <div>
-            <h4>Scegli il piano</h4>
-            <p>Il sistema imposta il tuo piano in base all'importo versato, quindi non devi fare nulla.</p>
+            <h4>Deposita il capitale</h4>
+            <p>Versa l'importo sul wallet e conferma dal pannello. Il saldo si accredità subito.</p>
           </div>
         </div>
         <div class="step">
           <div>
-            <h4>Trasferisci al wallet</h4>
-            <p>USDT su rete TRC20. Il wallet è quello qui sotto, nessun intermediario.</p>
+            <h4>Attivi il piano</h4>
+            <p>Il capitale passa dal saldo a una posizione attiva. Da lì in poi genera il rendimento del piano scelto.</p>
           </div>
         </div>
         <div class="step">
           <div>
-            <h4>Conferma nel pannello</h4>
-            <p>La team verifica la transazione e accredita il saldo. Da quel momento partono i segnali.</p>
+            <h4>Incassi i segnali</h4>
+            <p>Tre segnali al giorno, alle 09:00, 14:00 e 20:00. Il risultato finisce sul saldo.</p>
           </div>
         </div>
       </div>
       <div class="wallet-box" style="margin-top:18px">
-        <span class="wallet-label">Wallet di deposito (USDT TRC20)</span>
-        <span class="wallet-addr">TQxQuantum7X9F2kLmP4vR8sWzN1c</span>
+        <span class="wallet-label">Wallet di deposito (USDT BEP-20 · BNB Smart Chain)</span>
+        <span class="wallet-addr">0x2320a9e89C988dC605796e74adFa0e5a4A1deeA3</span>
       </div>
     </div>
 
@@ -88,20 +92,64 @@
     </div>
   </div>
 
+  <div class="toast" id="toast"></div>
+
   <script>
     const eur = (n) => '€' + Number(n || 0).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+    let PLANS = [];
+
     const ROWS = [
       ['Deposito minimo', p => eur(p.minDeposit)],
       ['Deposito massimo', p => p.maxDeposit ? eur(p.maxDeposit) : '—'],
       ['Rendimento giornaliero', p => '+' + String(p.dailyYieldPct).replace('.', ',') + '%'],
+      ['Rendimento su 100 euro', p => '+' + (Math.round(p.minDeposit ? 100 * p.dailyYieldPct / 100 * 100) / 100 : 0) + ' €/g'],
       ['Bonus sugli inviti', p => p.refBonusPct + '%'],
       ['Segnali giornalieri', p => '3'],
       ['Prelevi', p => 'da ' + eur(p.minDeposit)],
       ['Verifica prelievo', p => '30-45 gg.'],
+      ['Piani simultanei', p => 'illimitati'],
     ];
+
+    function toast(msg, kind) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (kind ? ' ' + kind : '');
+      setTimeout(() => t.classList.remove('show'), 3400);
+    }
+
+    async function buyPlan(id) {
+      const p = PLANS.find(x => String(x.id) === String(id));
+      if (!p) return;
+      const token = localStorage.getItem('quantx_token');
+
+      if (!token) {
+        toast('Apri un account per attivare il piano ' + p.name, 'err');
+        setTimeout(() => location.href = 'app.html?mode=register&plan=' + p.id, 1200);
+        return;
+      }
+
+      const res = await fetch('/api/activate-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ plan: p.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (data.error) {
+        // Saldo insufficiente: porta al pannello con il piano gia' selezionato
+        toast(data.message || data.error, 'err');
+        setTimeout(() => location.href = 'app.html?plan=' + p.id, 1600);
+        return;
+      }
+
+      toast('Piano ' + data.plan.name + ' attivato · ' + eur(data.position.amount) + ' in posizione', 'ok');
+      setTimeout(() => location.href = 'app.html', 1400);
+    }
 
     async function load() {
       const plans = await (await fetch('/api/plans')).json();
+      PLANS = plans;
+
       document.getElementById('plans').innerHTML = plans.map((p, i) => {
         const featured = i === 1;
         const max = p.maxDeposit ? 'a ' + eur(p.maxDeposit) : 'e oltre';
@@ -114,12 +162,14 @@
             '<li><span class="yes"></span>3 segnali ogni giorno</li>' +
             '<li><span class="yes"></span>' + p.refBonusPct + '% di bonus sugli inviti</li>' +
             '<li><span class="yes"></span>Prelievi da ' + eur(p.minDeposit) + '</li>' +
+            '<li><span class="yes"></span>Piu' + ' piani attivi contemporaneamente</li>' +
             '<li><span class="no"></span>Nessun canone</li>' +
           '</ul>' +
-          '<a href="app.html?mode=register" class="btn ' + (featured ? 'btn-primary' : 'btn-secondary') + ' btn-block">Apri un account</a>' +
+          '<button class="btn ' + (featured ? 'btn-primary' : 'btn-secondary') + ' btn-block" onclick="buyPlan(' + p.id + ')">Attiva ' + p.name + '</button>' +
         '</div>';
       }).join('');
 
+      plans.forEach((p, i) => { const h = document.getElementById('h' + i); if (h) h.textContent = p.name; });
       const tbody = document.querySelector('#compare tbody');
       tbody.innerHTML = ROWS.map(([label, fn]) =>
         '<tr><td>' + label + '</td>' + plans.map(p => '<td class="right num">' + fn(p) + '</td>').join('') + '</tr>'
