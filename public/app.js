@@ -167,23 +167,29 @@ function addAdminLink() {
   box.insertBefore(a, box.firstChild);
 }
 
-// ---------- GIOCATE (3 segnali/giorno) ----------
+// ---------- GIOCATE (3 segnali/giorno ad orari precisi) ----------
 async function renderSignals(data) {
   const sig = data.signals;
   const labels = ['Segnale Alpha', 'Segnale Beta', 'Segnale Gamma'];
   const conf = ['96.2%', '94.8%', '92.1%'];
+  const hours = [9, 14, 20]; // ore in cui i segnali sono disponibili
+  const currentHour = new Date().getHours();
+  
   $('signal-count').textContent = `${sig.claimed.length}/3 attivati`;
   $('signals').innerHTML = labels.map((lab, i) => {
     const claimed = sig.claimed.includes(i);
     const idx = sig.claimed.indexOf(i);
     const gained = idx >= 0 ? (sig.profits[idx] || 0) : 0;
+    const isAvailable = currentHour === hours[i];
+    const canClaim = !claimed && isAvailable;
+    
     return `<div class="signal ${claimed ? 'active' : ''}">
       <div class="info">
         <h4>${lab}</h4>
-        <div class="meta">Confidenza ${conf[i]} · ${claimed ? '<span class="win">+' + fmt(gained) + ' guadagnato</span>' : 'Disponibile — scade a mezzanotte'}</div>
+        <div class="meta">Confidenza ${conf[i]} · Disponibile alle ore ${hours[i]}:00 · ${claimed ? '<span class="win">' + (gained >= 0 ? '+' : '') + fmt(gained) + (gained >= 0 ? ' guadagnato' : ' perso') + '</span>' : isAvailable ? 'Disponibile ora' : 'In attesa...'}</div>
       </div>
-      <button class="btn ${claimed ? 'btn-ghost' : 'btn-green'}" ${claimed ? 'disabled' : ''} onclick="claimSignal(${i}, this)">
-        ${claimed ? '✓ Attivato' : 'Attiva trade'}
+      <button class="btn ${claimed ? 'btn-ghost' : 'btn-green'}" ${claimed || !isAvailable ? 'disabled' : ''} onclick="claimSignal(${i}, this)">
+        ${claimed ? '✓ Attivato' : isAvailable ? 'Attiva trade' : 'In attesa...'}
       </button>
     </div>`;
   }).join('');
@@ -194,8 +200,11 @@ async function claimSignal(i, btn) {
     await new Promise(r => setTimeout(r, 1200));
     return api('/api/claim-signal', { method: 'POST', body: JSON.stringify({ index: i }) });
   });
-  if (data.error) return toast(data.error);
-  toast('⚡ Trade chiuso: +' + fmt(data.profit));
+  if (data.error) {
+    toast(data.error + (data.message ? ' - ' + data.message : ''));
+    return;
+  }
+  toast((data.profit >= 0 ? '⚡ Trade chiuso: +' : '⚠️ Trade chiuso: ') + fmt(data.profit));
   animateBalance($('balance'), data.user.balance);
   renderSignals(data);
   loadMyActivity();

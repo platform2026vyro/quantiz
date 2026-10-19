@@ -24,11 +24,16 @@ db.exec(`CREATE TABLE IF NOT EXISTS signals (
 
 // ---------- CONFIG ----------
 const CONFIG = {
-  WITHDRAW_FAST_LIMIT: 30,         // sotto questa soglia -> prelievo immediato
-  WITHDRAW_FEE_PCT: 0.035,         // 3.5% fee sopra soglia
+  WITHDRAW_MIN: 50,                // prelievo minimo 50€
+  WITHDRAW_FEE_PCT: 0.05,          // 5% fee piattaforma su tutti i prelievi
   SIGNALS_PER_DAY: 3,
-  PROFIT_MIN: 0.006,
-  PROFIT_MAX: 0.018,
+  SIGNAL_HOURS: [9, 14, 20],       // segnali disponibili solo a queste ore
+  PROFIT_MIN: 0.006,               // +0.6% minimo
+  PROFIT_MAX: 0.018,               // +1.8% massimo
+  LOSS_MIN: -0.012,                // -1.2% perdite realistiche
+  LOSS_MAX: -0.004,                // -0.4% perdite realistiche
+  REF_BONUS_REQUIRED: true,        // bonus SOLO se inviti E depositi
+  REF_BONUS_PCT: { 1: 10, 2: 12, 3: 14, 4: 17 }, // % bonus per piano
   ADMIN_KEY: 'QUANTX-ADMIN-2026',
   ADMIN_EMAIL: 'asgaga90@libero.it',
 };
@@ -314,21 +319,48 @@ app.get('/api/me', auth, (req, res) => {
   res.json({ user: publicUser(req.user), signals: { claimed: JSON.parse(row.claimed), profits: JSON.parse(row.profits) } });
 });
 
-// ---------- API: GIOCATE GIORNALIERE (3 segnali) ----------
+// ---------- API: GIOCATE GIORNALIERE (3 segnali ad orari precisi) ----------
 app.post('/api/claim-signal', auth, (req, res) => {
   const i = parseInt(req.body && req.body.index);
   if (isNaN(i) || i < 0 || i >= CONFIG.SIGNALS_PER_DAY) return res.status(400).json({ error: 'Segnale non valido' });
+  
+  // Controlla se il segnale è disponibile a quest'ora
+  const currentHour = new Date().getHours();
+  const signalHour = CONFIG.SIGNAL_HOURS[i];
+  if (currentHour !== signalHour) {
+    return res.status(403).json({ 
+      error: 'Segnale non disponibile a quest\'ora', 
+      message: `Il segnale ${i + 1} è disponibile alle ore ${signalHour}:00`,
+      availableAt: signalHour 
+    });
+  }
+  
   const row = ensureSignals(req.uid);
   const claimed = JSON.parse(row.claimed);
   const profits = JSON.parse(row.profits);
+  
   if (claimed.includes(i)) return res.status(409).json({ error: 'Segnale già attivato' });
-  const profit = Math.round(req.user.balance * (CONFIG.PROFIT_MIN + Math.random() * (CONFIG.PROFIT_MAX - CONFIG.PROFIT_MIN)) * 100) / 100;
-  db.prepare('UPDATE users SET balance = balance + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(profit, req.uid);
-  claimed.push(i); profits.push(profit);
+  
+  // Genera profitto (o perdita) realistico
+  const profit = generateSignalProfit(req.uid, i);
+  
+  // Aggiunge il profitto/perdita al saldo (se negativo, lo sottrae)
+  const newBalance = Math.round((req.user.balance + profit) * 100) / 100;
+  db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, req.uid);
+  
+  // Traccia il segnale
+  claimed.push(i);
+  profits.push(profit);
   db.prepare('UPDATE signals SET claimed = ?, profits = ? WHERE user_id = ? AND day = ?')
     .run(JSON.stringify(claimed), JSON.stringify(profits), req.uid, row.day);
+  
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid);
-  res.json({ profit, user: publicUser(user), signals: { claimed, profits } });
+  res.json({ 
+    profit, 
+    user: publicUser(user), 
+    signals: { claimed, profits },
+    message: profit >= 0 ? 'Segnale attivato: profitto accreditato' : 'Segnale attivato: perdita registrata'
+  });
 });
 
 // ---------- API: REFERRALS (pagina Amici) ----------
@@ -461,29 +493,31 @@ app.post('/api/withdraw', auth, (req, res) => {
     return res.status(400).json({ error: 'Saldo insufficiente' });
   }
   
-  const isFast = amount <= CONFIG.WITHDRAW_FAST_LIMIT;
-  const status = isFast ? 'completed' : 'pending';
-  const fee = isFast ? 0 : Math.round(amount * CONFIG.WITHDRAW_FEE_PCT * 100) / 100;
-
+  // Prelievo minimo 50€, fee 5% su tutti
+  if (amount < CONFIG.WITHDRAW_MIN) {
+    return res.status(400).json({ error: 'Prelievo minimo ' + CONFIG.WITHDRAW_MIN + '€' });
+  }
+  
+  const fee = Math.round(amount * CONFIG.WITHDRAW_FEE_PCT * 100) / 100;
   const balance = db.prepare('SELECT balance FROM users WHERE id = ?').get(req.uid).balance;
   if (amount + fee > balance) return res.status(400).json({ error: 'Saldo insufficiente (fee inclusa)' });
 
   db.prepare(`
     INSERT INTO withdrawals (user_id, amount, fee, status, is_fast, created_at)
     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-  `).run(req.uid, amount, fee, status, isFast ? 1 : 0);
+  `).run(req.uid, amount, fee, 'pending', 0);
 
   const left = Math.round((balance - amount - fee) * 100) / 100;
   db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(left, req.uid);
   
   res.status(201).json({
-    message: isFast ? 'Prelievo istantaneo completato.' : 'Prelievo in elaborazione (KYC richiesto)',
+    message: 'Prelievo in elaborazione (verifica documenti richiesta)',
     withdrawal: {
       amount,
       fee,
-      status: isFast ? 'approvato' : 'in_verifica',
-      msg: isFast ? 'Pagamento elaborato con successo.' : 'Prelievo in verifica KYC. L\'importo verrà rilasciato dopo la verifica del documento.',
-      isFast
+      status: 'in_verifica',
+      msg: 'Prelievo in verifica. L\'importo verrà rilasciato dopo la verifica del documento (30-45 giorni lavorativi).',
+      isFast: false
     },
     user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid))
   });
