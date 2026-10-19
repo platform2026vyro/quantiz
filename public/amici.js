@@ -19,7 +19,16 @@ let myLink = '';
 async function load() {
   const me = await api('/api/me');
   if (me.error) { location.href = 'app.html'; return; }
-  if (me.user && me.user.isAdmin) $('nav-admin').style.display = 'inline-flex';
+  if (me.user && me.user.isAdmin) {
+    const box = $('nav-links');
+    const a = document.createElement('a');
+    a.id = 'nav-admin';
+    a.href = 'admin.html';
+    a.className = 'btn btn-ghost';
+    a.style.textDecoration = 'none';
+    a.textContent = 'Admin';
+    box.insertBefore(a, box.firstChild);
+  }
 
   const refs = await api('/api/referrals');
   if (refs.error) { toast('Errore nel caricamento dei dati'); return; }

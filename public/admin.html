@@ -3,37 +3,34 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QuantX AI — Controllo Admin</title>
+  <title>QuantX — Console</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <!-- LOGIN ADMIN -->
+  <!-- ACCESSO -->
   <div id="admin-login" class="auth-wrap">
     <div class="card auth-card">
-      <div class="logo" style="margin-bottom:20px">QUANT<span>X</span> <small style="color:var(--muted); font-size:14px">ADMIN</small></div>
-      <h2 style="margin-bottom:6px">Accesso riservato</h2>
-      <p style="color:var(--muted); font-size:14px; margin-bottom:18px">Entra con il tuo account amministratore.</p>
+      <div class="logo" style="margin-bottom:20px">QUANT<span>X</span></div>
+      <h2 style="margin-bottom:6px">Area riservata</h2>
+      <p style="color:var(--muted); font-size:14px; margin-bottom:18px">Accesso amministratore.</p>
       <div class="form">
         <div>
-          <label class="label">Email admin</label>
-          <input class="input" id="adm-email" type="email" placeholder="email amministratore" autocomplete="username" />
+          <label class="label">Email</label>
+          <input class="input" id="adm-email" type="email" placeholder="email" autocomplete="username" />
         </div>
         <div>
           <label class="label">Password</label>
           <input class="input" id="adm-pass" type="password" placeholder="••••••••" autocomplete="current-password"
-                 onkeydown="if(event.key==='Enter'){adminLogin()}" />
+                 onkeydown="if(event.key==='Enter'){adminLogin(this)}" />
         </div>
-        <button class="btn btn-primary btn-block" onclick="adminLogin()">Entra nel pannello ⚡</button>
-        <button class="btn btn-ghost btn-block" onclick="toggleKeyMode()" id="key-toggle">Usa la chiave admin</button>
+        <button class="btn btn-primary btn-block" id="adm-btn" onclick="adminLogin(this)">Entra ⚡</button>
+        <button class="btn btn-ghost btn-block" onclick="toggleKeyMode()" id="key-toggle">Usa la chiave</button>
         <div id="key-wrap" style="display:none">
-          <label class="label">Chiave admin</label>
-          <input class="input" id="adm-key" type="password" placeholder="Chiave di accesso"
-                 onkeydown="if(event.key==='Enter'){adminLogin()}"/>
+          <label class="label">Chiave</label>
+          <input class="input" id="adm-key" type="password" placeholder="chiave di accesso"
+                 onkeydown="if(event.key==='Enter'){adminLogin(this)}" />
         </div>
         <p id="adm-error" style="color:#ff5c7a; font-size:14px; text-align:center"></p>
-        <p style="text-align:center; font-size:14px; color:var(--muted)">
-          <a href="index.html" style="color:var(--cyan)">← Torna al sito</a>
-        </p>
       </div>
     </div>
   </div>
@@ -43,48 +40,101 @@
     <nav class="nav">
       <div class="logo">QUANT<span>X</span> ADMIN</div>
       <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
-        <span style="color:var(--green); font-size:14px; font-weight:700">● CONTROLLO TOTALE</span>
-        <a href="index.html" class="btn btn-ghost" style="text-decoration:none">Sito</a>
-        <a href="app.html" class="btn btn-ghost" style="text-decoration:none">Dashboard</a>
+        <span class="streak" style="font-size:12px" id="live-dot">● LIVE</span>
+        <button class="btn btn-ghost" onclick="refreshAll()">↻ Aggiorna</button>
         <button class="btn btn-ghost" onclick="adminLogout()">Esci</button>
       </div>
     </nav>
 
     <div class="stats-grid">
       <div class="card stat-card"><div class="num" id="ov-users">0</div><div class="label">Utenti totali</div></div>
-      <div class="card stat-card"><div class="num" id="ov-deposits">€0</div><div class="label">Depositi totali (soldi veri)</div></div>
-      <div class="card stat-card"><div class="num" id="ov-balance">€0</div><div class="label">Saldi virtuali totali</div></div>
-      <div class="card stat-card"><div class="num" id="ov-pending">0</div><div class="label">Prelievi in verifica</div></div>
+      <div class="card stat-card"><div class="num" id="ov-deposits">€0</div><div class="label">Depositi incassati</div></div>
+      <div class="card stat-card"><div class="num" id="ov-balance">€0</div><div class="label">Saldi virtuali</div></div>
+      <div class="card stat-card"><div class="num" id="ov-pending">0</div><div class="label">Prelievi da decidere</div></div>
     </div>
 
-    <div class="card" style="margin-bottom:20px">
-      <h3 style="margin-bottom:16px">⏳ Prelievi in attesa — decidi tu cosa pagare</h3>
-      <div id="pend-list"></div>
+    <div class="stats-grid" style="margin-top:-6px">
+      <div class="card stat-card"><div class="num" id="dy-users">0</div><div class="label">Nuovi utenti oggi</div></div>
+      <div class="card stat-card"><div class="num" id="dy-dep">€0</div><div class="label">Depositi oggi</div></div>
+      <div class="card stat-card"><div class="num" id="dy-out">€0</div><div class="label">Prelievi richiesti oggi</div></div>
+      <div class="card stat-card"><div class="num" id="dy-paid">€0</div><div class="label">Pagato oggi</div></div>
     </div>
 
-    <div class="card" style="margin-bottom:20px">
-      <h3 style="margin-bottom:16px">👥 Utenti — saldo modificabile a piacere</h3>
-      <div style="overflow-x:auto">
-        <table class="adm-table">
-          <thead>
-            <tr><th>Email</th><th>Nome</th><th>Saldo</th><th>Depositato</th><th>Piano</th><th>Amici</th><th>Bonus</th><th>Nuovo saldo</th><th></th></tr>
-          </thead>
-          <tbody id="users-body"></tbody>
-        </table>
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('panoramica', this)">Panoramica</button>
+      <button class="tab" onclick="showTab('depositi', this)">Depositi <span class="pill" id="pill-dep">0</span></button>
+      <button class="tab" onclick="showTab('prelievi', this)">Prelievi <span class="pill" id="pill-pend">0</span></button>
+      <button class="tab" onclick="showTab('utenti', this)">Utenti</button>
+    </div>
+
+    <!-- PANORAMICA -->
+    <div id="tab-panoramica" class="tabpane">
+      <div class="card" style="margin-bottom:20px">
+        <h3 style="margin-bottom:16px">⏳ Da decidere (prelievi in attesa)</h3>
+        <div id="pend-list"></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:16px">🧾 Ultimi movimenti</h3>
+        <div style="overflow-x:auto">
+          <table class="adm-table">
+            <thead><tr><th>Tipo</th><th>Utente</th><th>Importo</th><th>Stato</th><th>Data</th></tr></thead>
+            <tbody id="mov-body"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
-    <div class="card">
-      <h3 style="margin-bottom:16px">🧾 Ultimi prelievi</h3>
-      <div style="overflow-x:auto">
-        <table class="adm-table">
-          <thead><tr><th>Email</th><th>Importo</th><th>Fee</th><th>Stato</th><th>Data</th></tr></thead>
-          <tbody id="wd-body"></tbody>
-        </table>
+    <!-- DEPOSITI -->
+    <div id="tab-depositi" class="tabpane" style="display:none">
+      <div class="card">
+        <h3 style="margin-bottom:16px">💰 Depositi ricevuti</h3>
+        <p style="color:var(--muted); font-size:14px; margin-bottom:14px">
+          Controlla il wallet: se il pagamento è arrivato tieni <b>Confermato</b>, altrimenti <b>Annulla</b>
+          (annullando tolgo l'importo dal saldo dell'utente e il bonus al suo invitatore).
+        </p>
+        <div style="overflow-x:auto">
+          <table class="adm-table">
+            <thead><tr><th>Utente</th><th>Importo</th><th>Piano</th><th>Stato</th><th>Data</th><th>Azione</th></tr></thead>
+            <tbody id="dep-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRELIEVI -->
+    <div id="tab-prelievi" class="tabpane" style="display:none">
+      <div class="card" style="margin-bottom:20px">
+        <h3 style="margin-bottom:16px">⏳ In attesa di decisione</h3>
+        <div id="pend-list2"></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:16px">🧾 Storico prelievi</h3>
+        <div style="overflow-x:auto">
+          <table class="adm-table">
+            <thead><tr><th>Utente</th><th>Importo</th><th>Fee</th><th>Stato</th><th>Data</th></tr></thead>
+            <tbody id="wd-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- UTENTI -->
+    <div id="tab-utenti" class="tabpane" style="display:none">
+      <div class="card">
+        <h3 style="margin-bottom:16px">👥 Utenti — saldo modificabile</h3>
+        <div style="overflow-x:auto">
+          <table class="adm-table">
+            <thead>
+              <tr><th>Email</th><th>Nome</th><th>Saldo</th><th>Depositato</th><th>Piano</th><th>Amici</th><th>Bonus</th><th>Nuovo saldo</th><th></th></tr>
+            </thead>
+            <tbody id="users-body"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
 
+  <div class="toast" id="toast"></div>
   <script src="admin.js"></script>
 </body>
 </html>

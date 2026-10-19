@@ -23,6 +23,38 @@ async function api(path, opts = {}) {
   return res.json();
 }
 
+// Feedback sui pulsanti: mentre lavorano si vedono "occupati" (niente piu' click a vuoto)
+async function withBtn(btn, label, fn) {
+  if (btn) {
+    btn.dataset.old = btn.textContent;
+    btn.disabled = true;
+    btn.classList.add('loading');
+    btn.textContent = label;
+  }
+  try {
+    return await fn();
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+      btn.textContent = btn.dataset.old || btn.textContent;
+    }
+  }
+}
+
+function animateBalance(el, target) {
+  if (!el) return;
+  const from = parseFloat(String(el.textContent).replace(/[^0-9.]/g, '')) || 0;
+  const start = performance.now();
+  const tick = (now) => {
+    const t = Math.min(1, (now - start) / 700);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = fmt(from + (target - from) * eased);
+    if (t < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
 // ---------- AUTH ----------
 function applyAuthMode(reg) {
   registerMode = reg;
@@ -55,8 +87,40 @@ async function enterDash() {
   renderUser(data);
   renderSignals(data);
   loadReferrals();
+  loadMyActivity();
+  loadWithdrawalsList();
   startFeed();
   drawChart();
+}
+
+// Le mie ultime operazioni
+async function loadMyActivity() {
+  const data = await api('/api/my-activity');
+  const box = $('my-activity');
+  if (!box) return;
+  const items = (data && data.items) || [];
+  box.innerHTML = items.length ? items.map(it => `
+    <div class="activity-item">
+      <span class="ic">${it.type === 'deposit' ? '💰' : it.type === 'withdraw' ? '🏦' : '📈'}</span>
+      <span class="tx">${it.text}<div class="when">${new Date(String(it.date).replace(' ', 'T') + 'Z').toLocaleString('it-IT')}</div></span>
+      <span class="${it.amount >= 0 ? 'pos' : 'neg'}">${it.amount >= 0 ? '+' : ''}${fmt(it.amount)}</span>
+    </div>`).join('') : '<p style="color:var(--muted)">Nessuna operazione. Inizia con un deposito.</p>';
+}
+
+// Storico prelievi
+async function loadWithdrawalsList() {
+  const data = await api('/api/withdrawals');
+  const box = $('withdrawals-list');
+  if (!box) return;
+  const list = (data && data.withdrawals) || [];
+  box.innerHTML = list.length ? list.map(w => `
+    <div class="activity-item">
+      <span class="ic">🏦</span>
+      <span class="tx">Prelievo
+        <div class="when">${w.status === 'completed' ? 'Pagato' : w.status === 'rejected' ? 'Respinto' : 'In verifica'} · ${new Date(String(w.date).replace(' ', 'T') + 'Z').toLocaleString('it-IT')}</div>
+      </span>
+      <span class="neg">-${fmt(w.amount)}</span>
+    </div>`).join('') : '<p style="color:var(--muted)">Nessun prelievo richiesto.</p>';
 }
 
 // ---------- FIDELTÀ: codice referral + link invito ----------
@@ -84,12 +148,23 @@ function shareRef(channel) {
 
 function renderUser(data) {
   const u = data.user;
-  $('balance').textContent = fmt(u.balance);
+  animateBalance($('balance'), u.balance);
   $('streak').textContent = u.streak;
   $('balance-sub').textContent = 'Piano ' + (u.planName || 'Starter') + ' · rendita automatica attiva';
-  // Link al pannello admin solo per l'amministratore
-  const adm = $('nav-admin');
-  if (adm) adm.style.display = u.isAdmin ? 'inline-flex' : 'none';
+  // Il pulsante Admin esiste SOLO per l'amministratore (per gli altri non viene nemmeno creato)
+  if (u.isAdmin) addAdminLink();
+}
+
+function addAdminLink() {
+  const box = $('nav-links');
+  if (!box || $('nav-admin')) return;
+  const a = document.createElement('a');
+  a.id = 'nav-admin';
+  a.href = 'admin.html';
+  a.className = 'btn btn-ghost';
+  a.style.textDecoration = 'none';
+  a.textContent = 'Admin';
+  box.insertBefore(a, box.firstChild);
 }
 
 // ---------- GIOCATE (3 segnali/giorno) ----------
@@ -100,26 +175,30 @@ async function renderSignals(data) {
   $('signal-count').textContent = `${sig.claimed.length}/3 attivati`;
   $('signals').innerHTML = labels.map((lab, i) => {
     const claimed = sig.claimed.includes(i);
-    const profit = sig.profits[sig.profits.indexOf ? sig.profits.filter((_, idx) => sig.claimed[idx] === i)[0] : -1];
+    const idx = sig.claimed.indexOf(i);
+    const gained = idx >= 0 ? (sig.profits[idx] || 0) : 0;
     return `<div class="signal ${claimed ? 'active' : ''}">
       <div class="info">
         <h4>${lab}</h4>
-        <div class="meta">Confidenza ${conf[i]} · ${claimed ? '<span class="win">+€' + (sig.profits[i] || 0).toFixed(2) + ' guadagnato</span>' : 'Disponibile — scade a mezzanotte'}</div>
+        <div class="meta">Confidenza ${conf[i]} · ${claimed ? '<span class="win">+' + fmt(gained) + ' guadagnato</span>' : 'Disponibile — scade a mezzanotte'}</div>
       </div>
-      <button class="btn ${claimed ? 'btn-ghost' : 'btn-green'}" ${claimed ? 'disabled' : ''} onclick="claimSignal(${i})">
+      <button class="btn ${claimed ? 'btn-ghost' : 'btn-green'}" ${claimed ? 'disabled' : ''} onclick="claimSignal(${i}, this)">
         ${claimed ? '✓ Attivato' : 'Attiva trade'}
       </button>
     </div>`;
   }).join('');
 }
 
-async function claimSignal(i) {
-  const data = await api('/api/claim-signal', { method: 'POST', body: JSON.stringify({ index: i }) });
+async function claimSignal(i, btn) {
+  const data = await withBtn(btn, '⏳ Trade in corso...', async () => {
+    await new Promise(r => setTimeout(r, 1200));
+    return api('/api/claim-signal', { method: 'POST', body: JSON.stringify({ index: i }) });
+  });
   if (data.error) return toast(data.error);
   toast('⚡ Trade chiuso: +' + fmt(data.profit));
-  const me = await api('/api/me');
-  renderUser(me);
-  renderSignals(me);
+  animateBalance($('balance'), data.user.balance);
+  renderSignals(data);
+  loadMyActivity();
 }
 
 // ---------- FEED FAKE (segnali in tempo reale) ----------
@@ -158,22 +237,35 @@ function drawChart() {
 function openModal(id) { $( 'modal-' + id).classList.add('show'); }
 function closeModal(id) { $('modal-' + id).classList.remove('show'); }
 
-async function doDeposit() {
+async function doDeposit(btn) {
   const amount = $('dep-amount').value;
-  const data = await api('/api/deposit', { method: 'POST', body: JSON.stringify({ amount }) });
+  if (!amount || Number(amount) <= 0) return toast('Inserisci un importo valido');
+  const data = await withBtn(btn, '⏳ Verifica pagamento...', async () => {
+    await new Promise(r => setTimeout(r, 900));   // come la conferma di un pagamento vero
+    return api('/api/deposit', { method: 'POST', body: JSON.stringify({ amount }) });
+  });
   if (data.error) return toast(data.error);
   closeModal('deposit');
-  toast('✅ Deposito confermato. Rendita attivata!');
-  renderUser({ user: data.user });
+  $('dep-amount').value = '';
+  toast('✅ Deposito di ' + fmt(amount) + ' confermato · piano ' + (data.deposit ? data.deposit.plan : 'attivo'));
+  if (data.user) animateBalance($('balance'), data.user.balance);
+  loadMyActivity();
 }
 
-async function doWithdraw() {
+async function doWithdraw(btn) {
   const amount = $('wd-amount').value;
-  const data = await api('/api/withdraw', { method: 'POST', body: JSON.stringify({ amount }) });
+  if (!amount || Number(amount) <= 0) return toast('Inserisci un importo valido');
+  const data = await withBtn(btn, '⏳ Invio richiesta...', async () => {
+    await new Promise(r => setTimeout(r, 900));
+    return api('/api/withdraw', { method: 'POST', body: JSON.stringify({ amount }) });
+  });
   if (data.error) return toast(data.error);
   closeModal('withdraw');
-  toast(data.withdrawal.status === 'approvato' ? '✅ ' + data.withdrawal.msg : '⏳ ' + data.withdrawal.msg);
-  if (data.user) renderUser({ user: data.user });
+  $('wd-amount').value = '';
+  toast((data.withdrawal.status === 'approvato' ? '✅ ' : '⏳ ') + data.withdrawal.msg);
+  if (data.user) animateBalance($('balance'), data.user.balance);
+  loadMyActivity();
+  loadWithdrawalsList();
 }
 
 function logout() { localStorage.removeItem(TOKEN_KEY); location.href = 'index.html'; }

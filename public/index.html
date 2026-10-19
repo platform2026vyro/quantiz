@@ -29,11 +29,30 @@
       </div>
     </section>
 
+    <div class="livebar">
+      <span class="dot"></span>
+      <span><b id="live-online">0</b> trader online</span>
+      <span class="sep">·</span>
+      <span><b id="live-watching">0</b> stanno guardando ora</span>
+      <span class="sep">·</span>
+      <span>ultimo deposito <b id="live-last">—</b> min fa</span>
+      <span class="sep">·</span>
+      <span><b id="live-paid">€0</b> pagati oggi</span>
+    </div>
+
     <div class="stats-grid">
       <div class="card stat-card"><div class="num" id="stat-profit">€0</div><div class="label">Guadagnati negli ultimi 24h</div></div>
       <div class="card stat-card"><div class="num" id="stat-users">0</div><div class="label">Investitori attivi</div></div>
-      <div class="card stat-card"><div class="num">87.4%</div><div class="label">Win-rate medio</div></div>
-      <div class="card stat-card"><div class="num">€12.4M</div><div class="label">Capitale gestito</div></div>
+      <div class="card stat-card"><div class="num" id="stat-winrate">0%</div><div class="label">Win-rate medio</div></div>
+      <div class="card stat-card"><div class="num" id="stat-capital">€0</div><div class="label">Capitale gestito</div></div>
+    </div>
+
+    <div class="card" style="margin-top:26px">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
+        <h3>🔴 Attività in tempo reale</h3>
+        <span class="streak" style="font-size:12px">si aggiorna da sola</span>
+      </div>
+      <div class="ticker" id="ticker"></div>
     </div>
 
     <h2 class="section-title">Perché QuantX AI?</h2>
@@ -135,8 +154,7 @@
     <div class="footer">
       QuantX AI © 2026 — Motore di Trading Quantitativo ·
       <a href="plans.html" style="color:var(--muted)">Piani</a> ·
-      <a href="amici.html" style="color:var(--muted)">Amici</a> ·
-      <a href="admin.html" style="color:var(--muted)">Admin</a>
+      <a href="amici.html" style="color:var(--muted)">Amici</a>
       <div style="margin-top:8px">Rischi e rendimenti non garantiti · Investimento ad alto rendimento</div>
     </div>
   </div>

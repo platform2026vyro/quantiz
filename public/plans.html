@@ -107,11 +107,13 @@
           <label class="label">Wallet QuantX (USDT TRC20)</label>
           <input class="input" id="plan-modal-wallet" readonly style="font-size:13px" value="TQxQuantum7X9F2kLmP4vR8sWzN1c" />
         </div>
-        <button class="btn btn-primary btn-block" onclick="confirmPlan()">Ho inviato il pagamento</button>
+        <button class="btn btn-primary btn-block" onclick="confirmPlan(this)">Ho inviato il pagamento</button>
         <button class="btn btn-ghost btn-block" onclick="document.getElementById('modal-plan').classList.remove('show')">Annulla</button>
       </div>
     </div>
   </div>
+
+  <div class="toast" id="toast"></div>
 
   <script>
     // Piani allineati al database (id 1-4)
@@ -134,7 +136,7 @@
       document.getElementById('modal-plan').classList.add('show');
     }
 
-    async function confirmPlan() {
+    async function confirmPlan(btn) {
       const token = localStorage.getItem('quantx_token');
       if (!token) {
         document.getElementById('plan-modal-text').textContent =
@@ -142,15 +144,27 @@
         setTimeout(() => location.href = 'app.html?mode=register', 1500);
         return;
       }
+      const old = btn.textContent;
+      btn.disabled = true; btn.textContent = '⏳ Verifica pagamento...';
+      await new Promise(r => setTimeout(r, 900));
       const res = await fetch('/api/activate-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({ plan: selectedPlan }),
       });
       const data = await res.json();
-      if (data.error) return alert(data.error);
-      alert('✅ Richiesta registrata! Il piano ' + data.plan.name + ' sarà attivato non appena il team confermerà il pagamento.');
-      location.href = 'app.html';
+      btn.disabled = false; btn.textContent = old;
+      if (data.error) {
+        const t = document.getElementById('toast');
+        t.textContent = data.error; t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 3000);
+        return;
+      }
+      document.getElementById('modal-plan').classList.remove('show');
+      const t = document.getElementById('toast');
+      t.textContent = '✅ Piano ' + data.plan.name + ' richiesto. Ti avvisiamo appena è attivo.';
+      t.classList.add('show');
+      setTimeout(() => { location.href = 'app.html'; }, 2200);
     }
   </script>
 </body>

@@ -551,6 +551,74 @@ function getInvitesRecursive(userId, level, db) {
   }));
 }
 
+// ---------- API: ATTIVITA' IN TEMPO REALE (ticker pubblico) ----------
+const FAKE = [
+  ['Marco R.', 'Milano'], ['Giulia B.', 'Roma'], ['Andrea P.', 'Torino'], ['Luca M.', 'Napoli'],
+  ['Sara T.', 'Bologna'], ['Davide C.', 'Firenze'], ['Elena F.', 'Verona'], ['Matteo G.', 'Bari'],
+  ['Chiara L.', 'Palermo'], ['Federica N.', 'Genova'], ['Alessandro V.', 'Padova'], ['Martina S.', 'Cagliari'],
+  ['Simone D.', 'Parma'], ['Valentina R.', 'Catania'], ['Riccardo B.', 'Bergamo'], ['Ilaria M.', 'Modena'],
+];
+const AMOUNTS = [10, 25, 50, 80, 100, 150, 200, 300, 500, 750, 1000, 1500];
+
+function randomFrom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+app.get('/api/activity', (req, res) => {
+  const items = [];
+  for (let i = 0; i < 8; i++) {
+    const [name, city] = randomFrom(FAKE);
+    const roll = Math.random();
+    if (roll < 0.55) {
+      const amt = randomFrom(AMOUNTS);
+      items.push({ type: 'deposit', text: name + ' (' + city + ') ha depositato ' + amt + ' €', amount: amt, ago: 1 + Math.floor(Math.random() * 40) });
+    } else if (roll < 0.85) {
+      const amt = randomFrom([20, 30, 45, 60, 90, 120, 250, 400]);
+      items.push({ type: 'withdraw', text: name + ' (' + city + ') ha prelevato ' + amt + ' €', amount: amt, ago: 1 + Math.floor(Math.random() * 40) });
+    } else {
+      const pct = (Math.random() * 2 + 0.5).toFixed(2);
+      items.push({ type: 'signal', text: name + ' ha chiuso un trade ' + (Math.random() > 0.5 ? 'BTC/USDT' : 'ETH/USDT') + ' +' + pct + '%', amount: 0, ago: 1 + Math.floor(Math.random() * 40) });
+    }
+  }
+  items.sort((a, b) => a.ago - b.ago);
+  res.json({ items });
+});
+
+// Contatori "live" della piattaforma
+app.get('/api/live', (req, res) => {
+  const realUsers = db.prepare('SELECT COUNT(*) c FROM users').get().c;
+  const paidToday = db.prepare("SELECT COALESCE(SUM(amount),0) s FROM withdrawals WHERE date(created_at) = date('now')").get().s;
+  const depToday = db.prepare("SELECT COALESCE(SUM(amount),0) s FROM deposits WHERE confirmed = 1 AND date(created_at) = date('now')").get().s;
+  res.json({
+    online: 3180 + realUsers * 41 + Math.floor(Math.random() * 280),
+    watching: 38 + Math.floor(Math.random() * 95),
+    paidToday: Math.round(142000 + paidToday * 12 + Math.random() * 90000),
+    depositsToday: Math.round(38900 + depToday * 9 + Math.random() * 25000),
+    lastDepositAgo: 1 + Math.floor(Math.random() * 8),
+    members: 11840 + realUsers,
+  });
+});
+
+// Le mie ultime operazioni (dashboard)
+app.get('/api/my-activity', auth, (req, res) => {
+  const rows = [];
+  for (const d of db.prepare('SELECT amount, plan_id, created_at FROM deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 6').all(req.uid)) {
+    const p = db.prepare('SELECT name FROM plans WHERE id = ?').get(d.plan_id);
+    rows.push({ type: 'deposit', text: 'Deposito su piano ' + (p ? p.name : 'Starter'), amount: d.amount, date: d.created_at });
+  }
+  for (const w of db.prepare('SELECT amount, status, created_at FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC LIMIT 6').all(req.uid)) {
+    rows.push({
+      type: 'withdraw',
+      text: w.status === 'completed' ? 'Prelievo pagato' : w.status === 'rejected' ? 'Prelievo respinto' : 'Prelievo in verifica',
+      amount: -w.amount, date: w.created_at,
+    });
+  }
+  for (const s of db.prepare('SELECT profits, day FROM signals WHERE user_id = ? ORDER BY day DESC LIMIT 5').all(req.uid)) {
+    let profit = 0; try { profit = JSON.parse(s.profits).reduce((a, b) => a + b, 0); } catch (e) { /* ignora */ }
+    if (profit > 0) rows.push({ type: 'yield', text: 'Segnali chiusi in profitto', amount: profit, date: s.day + ' 12:00:00' });
+  }
+  rows.sort((a, b) => (a.date < b.date ? 1 : -1));
+  res.json({ items: rows.slice(0, 8) });
+});
+
 // ---------- API: ADMIN (pannello di controllo) ----------
 // Accesso admin: account admin (email+password) OPPURE chiave admin
 app.post('/api/admin/login', (req, res) => {
@@ -626,6 +694,62 @@ app.post('/api/admin/resolve-withdrawal', adminAuth, (req, res) => {
 
   db.prepare('UPDATE withdrawals SET status = ? WHERE id = ?').run(status === 'pagato' ? 'completed' : 'rejected', w.id);
   res.json({ ok: true, status: status === 'pagato' ? 'Pagato' : 'Respinto (KYC)' });
+});
+
+// ---------- API: ADMIN - GESTIONE DEPOSITI ----------
+app.get('/api/admin/deposits', adminAuth, (req, res) => {
+  const deposits = db.prepare(`
+    SELECT d.id, u.id AS userId, u.email, u.username AS name, d.amount, d.confirmed, d.created_at AS date, p.name AS plan
+    FROM deposits d JOIN users u ON u.id = d.user_id LEFT JOIN plans p ON p.id = d.plan_id
+    ORDER BY d.created_at DESC LIMIT 100
+  `).all();
+  res.json({ deposits });
+});
+
+app.post('/api/admin/deposit-status', adminAuth, (req, res) => {
+  const { id, status } = req.body;
+  const dep = db.prepare('SELECT * FROM deposits WHERE id = ?').get(parseInt(id, 10));
+  if (!dep) return res.status(404).json({ error: 'Deposito non trovato' });
+
+  if (status === 'confermato') {
+    db.prepare('UPDATE deposits SET confirmed = 1 WHERE id = ?').run(dep.id);
+    return res.json({ ok: true, status: 'Confermato' });
+  }
+
+  if (status === 'annullato') {
+    if (dep.confirmed) {
+      // Tolgo dal saldo dell'utente l'importo che non e' stato realmente pagato
+      db.prepare('UPDATE users SET balance = MAX(balance - ?, 0) WHERE id = ?').run(dep.amount, dep.user_id);
+      // E tolgo il bonus dato al referrer
+      const plan = db.prepare('SELECT ref_bonus_pct FROM plans WHERE id = ?').get(dep.plan_id);
+      const bonus = Math.round(dep.amount * ((plan ? plan.ref_bonus_pct : 0) / 100) * 100) / 100;
+      const owner = db.prepare('SELECT referred_by FROM users WHERE id = ?').get(dep.user_id);
+      if (owner && owner.referred_by && bonus > 0) {
+        db.prepare('UPDATE users SET balance = MAX(balance - ?, 0) WHERE id = ?').run(bonus, owner.referred_by);
+        db.prepare('UPDATE referrals SET referrer_bonus = MAX(referrer_bonus - ?, 0) WHERE referrer_id = ? AND referee_id = ?').run(bonus, owner.referred_by, dep.user_id);
+      }
+    }
+    db.prepare('DELETE FROM deposits WHERE id = ?').run(dep.id);
+    return res.json({ ok: true, status: 'Annullato' });
+  }
+
+  res.status(400).json({ error: 'Stato non valido' });
+});
+
+// Numeri di oggi per il pannello
+app.get('/api/admin/daily', adminAuth, (req, res) => {
+  const newUsers = db.prepare("SELECT COUNT(*) c FROM users WHERE date(created_at) = date('now')").get().c;
+  const deposits = db.prepare("SELECT COUNT(*) c, COALESCE(SUM(amount),0) s FROM deposits WHERE confirmed = 1 AND date(created_at) = date('now')").get();
+  const withdrawals = db.prepare("SELECT COUNT(*) c, COALESCE(SUM(amount),0) s FROM withdrawals WHERE date(created_at) = date('now')").get();
+  const paid = db.prepare("SELECT COALESCE(SUM(amount),0) s FROM withdrawals WHERE status = 'completed' AND date(created_at) = date('now')").get().s;
+  const pending = db.prepare("SELECT COUNT(*) c, COALESCE(SUM(amount),0) s FROM withdrawals WHERE status = 'pending'").get();
+  res.json({
+    newUsers,
+    depositsCount: deposits.c, depositsSum: deposits.s,
+    withdrawalsCount: withdrawals.c, withdrawalsSum: withdrawals.s,
+    paidToday: paid,
+    pendingCount: pending.c, pendingSum: pending.s,
+  });
 });
 
 // ---------- START SERVER ----------

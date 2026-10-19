@@ -44,10 +44,9 @@
   <div id="dash-view" class="container" style="display:none">
     <nav class="nav">
       <div class="logo" onclick="location.href='index.html'">QUANT<span>X</span> AI</div>
-      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+      <div id="nav-links" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
         <a href="plans.html" class="btn btn-ghost" style="text-decoration:none">Piani</a>
         <a href="amici.html" class="btn btn-ghost" style="text-decoration:none">Amici</a>
-        <a href="admin.html" id="nav-admin" class="btn btn-ghost" style="text-decoration:none; display:none">Admin</a>
         <div class="streak">🔥 <span id="streak">0</span> giorni di serie</div>
         <button class="btn btn-ghost" onclick="logout()">Esci</button>
       </div>
@@ -118,12 +117,22 @@
             <button class="btn btn-primary" onclick="openModal('withdraw')">↺ Prelievo</button>
           </div>
         </div>
+
+        <div class="card" style="margin-top:20px">
+          <h3 style="margin-bottom:12px">📄 Ultimi movimenti</h3>
+          <div id="withdrawals-list"><p style="color:var(--muted)">Caricamento...</p></div>
+        </div>
       </div>
 
       <div>
         <div class="card">
           <h3 style="margin-bottom:16px">🔴 Live AI Signals</h3>
           <div class="feed" id="feed"></div>
+        </div>
+
+        <div class="card" style="margin-top:20px">
+          <h3 style="margin-bottom:16px">🧾 Le tue ultime operazioni</h3>
+          <div id="my-activity"><p style="color:var(--muted)">Caricamento...</p></div>
         </div>
       </div>
     </div>
@@ -143,7 +152,7 @@
           <label class="label">Wallet di deposito (USDT TRC20)</label>
           <input class="input" id="dep-wallet" readonly style="font-size:13px" value="TQxQuantum7X9F2kLmP4vR8sWzN1c" />
         </div>
-        <button class="btn btn-green btn-block" onclick="doDeposit()">Conferma deposito</button>
+        <button class="btn btn-green btn-block" onclick="doDeposit(this)">Conferma deposito</button>
         <button class="btn btn-ghost btn-block" onclick="closeModal('deposit')">Annulla</button>
       </div>
     </div>
@@ -159,7 +168,7 @@
           <label class="label">Importo (€)</label>
           <input class="input" id="wd-amount" type="number" placeholder="100" />
         </div>
-        <button class="btn btn-primary btn-block" onclick="doWithdraw()">Richiedi prelievo</button>
+        <button class="btn btn-primary btn-block" onclick="doWithdraw(this)">Richiedi prelievo</button>
         <button class="btn btn-ghost btn-block" onclick="closeModal('withdraw')">Annulla</button>
       </div>
     </div>
