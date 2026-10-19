@@ -7,6 +7,14 @@ const Database = require('better-sqlite3');
 const path = require('path');
 
 const app = express();
+// Niente cache: il browser deve prendere SEMPRE i file aggiornati (altrimenti
+// restano visibili versioni vecchie con dati/funzioni rimossi)
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
