@@ -327,6 +327,12 @@ function ensureSignals(userId) {
 function publicUser(user) {
   const plan = db.prepare('SELECT name FROM plans WHERE id = ?').get(user.plan_id);
   const ownDeposits = db.prepare('SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE user_id = ? AND confirmed = 1').get(user.id).s;
+  const pos = db.prepare(`
+    SELECT COUNT(*) AS c, COALESCE(SUM(up.amount),0) AS s,
+           COALESCE(SUM(up.amount * p.daily_yield_pct / 100.0),0) AS y
+    FROM user_plans up JOIN plans p ON p.id = up.plan_id
+    WHERE up.user_id = ? AND up.status = 'active'
+  `).get(user.id);
   const rows = db.prepare('SELECT claimed FROM signals WHERE user_id = ?').all(user.id);
   let streak = 0;
   for (const r of rows) { try { if (JSON.parse(r.claimed).length >= CONFIG.SIGNALS_PER_DAY) streak++; } catch (e) { /* ignora */ } }
@@ -338,6 +344,9 @@ function publicUser(user) {
     streak, createdAt: user.created_at,
     referralCode: user.referral_code, referredBy: user.referred_by,
     plan: user.plan_id, planName: plan ? plan.name : 'Starter',
+    activePlans: pos.c,
+    investedInPlans: Math.round(pos.s * 100) / 100,
+    dailyYieldTotal: Math.round(pos.y * 100) / 100,
     isAdmin: !!user.is_admin,
   };
 }
@@ -765,7 +774,9 @@ app.get('/api/admin/users', adminAuth, (req, res) => {
       (SELECT COALESCE(SUM(amount),0) FROM deposits d WHERE d.user_id = u.id AND d.confirmed = 1) AS deposited,
       (SELECT COUNT(*) FROM users x WHERE x.referred_by = u.id) AS invites,
       (SELECT COUNT(*) FROM referrals r WHERE r.referrer_id = u.id) AS refCount,
-      (SELECT COALESCE(SUM(referrer_bonus),0) FROM referrals r WHERE r.referrer_id = u.id) AS refEarned
+      (SELECT COALESCE(SUM(referrer_bonus),0) FROM referrals r WHERE r.referrer_id = u.id) AS refEarned,
+      (SELECT COUNT(*) FROM user_plans up WHERE up.user_id = u.id AND up.status = 'active') AS activePlans,
+      (SELECT COALESCE(SUM(up.amount),0) FROM user_plans up WHERE up.user_id = u.id AND up.status = 'active') AS investedInPlans
     FROM users u LEFT JOIN plans p ON p.id = u.plan_id
     ORDER BY u.id
   `).all();

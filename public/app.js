@@ -12,7 +12,8 @@ let registerMode = urlParams.get('mode') === 'register' || !!urlRef;
 
 // ---------- HELPERS ----------
 const $ = (id) => document.getElementById(id);
-const fmt = (n) => '€' + n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n) => '€' + Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt0 = (n) => (Number(n || 0) < 0 ? '-' : '') + '€' + Math.abs(Number(n || 0)).toLocaleString('it-IT', { maximumFractionDigits: 0 });
 const toast = (msg) => { const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); };
 
 async function api(path, opts = {}) {
@@ -128,17 +129,54 @@ async function loadWithdrawalsList() {
 async function loadPositions() {
   const d = await api('/api/positions');
   if (d.error) return;
+
+  // Riga/badge in alto
   const line = $('positions-line');
-  if (!line) return;
+  if (line) {
+    if (!d.positions.length) {
+      line.innerHTML = '<a href="plans.html" class="btn btn-ghost" style="font-size:13px">Nessun piano attivo · attivane uno →</a>';
+    } else {
+      const badges = d.positions.map(p =>
+        '<span class="badge" style="border-color:var(--accent-line); color:#8fd7ff">' + p.plan + ' · ' + fmt0(p.amount) + ' · +' + fmt(p.dailyYield) + '/g</span>'
+      ).join('');
+      line.innerHTML = '<span class="muted" style="font-size:13px">Piani attivi:</span>' + badges +
+        '<span class="badge success">totale ' + fmt0(d.dailyYield) + '/g</span>';
+    }
+  }
+
+  // Card dettagliata
+  const box = $('positions-list');
+  const cnt = $('positions-count');
+  if (cnt) cnt.textContent = d.count === 1 ? '1 piano attivo' : d.count + ' piani attivi';
+  if (!box) return;
+
   if (!d.positions.length) {
-    line.innerHTML = '<a href="plans.html" class="btn btn-ghost" style="font-size:13px">Nessun piano attivo · attivane uno →</a>';
+    box.innerHTML = '<p style="color:var(--muted); font-size:14px; margin:0">' +
+      'Non hai ancora attivato nessun piano. Deposita capitale e attiva il primo piano per iniziare a guadagnare.</p>';
     return;
   }
-  const badges = d.positions.map(p =>
-    '<span class="badge" style="border-color:var(--accent-line); color:#8fd7ff">' + p.plan + ' · ' + fmt0(p.amount) + ' · +' + fmt(p.dailyYield) + '/g</span>'
-  ).join('');
-  line.innerHTML = '<span class="muted" style="font-size:13px">Piani attivi:</span>' + badges +
-    '<span class="badge success">totale ' + fmt0(d.dailyYield) + '/g</span>';
+
+  box.innerHTML = d.positions.map((p, i) =>
+    '<div class="signal' + (i === 0 ? ' active' : '') + '">' +
+      '<div class="info">' +
+        '<h4>' + p.plan + ' <span style="color:var(--muted); font-weight:400; font-size:13px">· #' + p.id + '</span></h4>' +
+        '<div class="meta">' + fmt0(p.amount) + ' investiti · +' + String(p.dailyYieldPct).replace('.', ',') + '% al giorno' +
+        ' · attivo dal ' + new Date(String(p.since).replace(' ', 'T') + 'Z').toLocaleDateString('it-IT') + '</div>' +
+      '</div>' +
+      '<div style="text-align:right; white-space:nowrap">' +
+        '<div style="color:var(--green); font-weight:800; font-size:16px">+' + fmt(p.dailyYield) + '</div>' +
+        '<div style="color:var(--muted); font-size:12px">al giorno</div>' +
+      '</div>' +
+    '</div>'
+  ).join('') +
+  '<div class="signal" style="background:transparent; border-style:dashed; margin-top:0">' +
+    '<div class="info"><h4>Totale investito</h4>' +
+      '<div class="meta">' + d.count + (d.count === 1 ? ' posizione attiva' : ' posizioni attive') + '</div></div>' +
+    '<div style="text-align:right; white-space:nowrap">' +
+      '<div style="color:var(--green); font-weight:800; font-size:16px">' + fmt0(d.totalInvested) + '</div>' +
+      '<div style="color:var(--muted); font-size:12px">capitale</div>' +
+    '</div>' +
+  '</div>';
 }
 
 // ---------- FIDELTÀ: codice referral + link invito ----------
@@ -168,7 +206,9 @@ function renderUser(data) {
   const u = data.user;
   animateBalance($('balance'), u.balance);
   $('streak').textContent = u.streak;
-  $('balance-sub').textContent = 'Piano ' + (u.planName || 'Starter') + ' · rendita automatica attiva';
+  $('balance-sub').textContent = u.activePlans
+    ? u.activePlans + (u.activePlans === 1 ? ' piano attivo · ' : ' piani attivi · ') + fmt0(u.dailyYieldTotal) + ' al giorno'
+    : 'Nessun piano attivo · attivane uno';
   // Il pulsante Admin esiste SOLO per l'amministratore (per gli altri non viene nemmeno creato)
   if (u.isAdmin) addAdminLink();
 }

@@ -2,6 +2,7 @@
 const KEY = 'quantx_admin_key';
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => '€' + Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt0 = (n) => (Number(n || 0) < 0 ? '-' : '') + '€' + Math.abs(Number(n || 0)).toLocaleString('it-IT', { maximumFractionDigits: 0 });
 const dt = (s) => new Date(String(s).replace(' ', 'T') + 'Z').toLocaleString('it-IT');
 
 let currentTab = 'panoramica';
@@ -177,6 +178,7 @@ async function loadUsers() {
       <td>${u.plan || '—'}</td>
       <td>${u.invites} <span style="color:var(--muted)">(${u.refCount} attivi)</span></td>
       <td>${fmt(u.refEarned)}</td>
+      <td><b>${u.activePlans || 0}</b> <span style="color:var(--muted)">(${fmt0(u.investedInPlans || 0)})</span></td>
       <td><input class="input" id="nb-${u.id}" type="number" value="${u.balance}" style="padding:8px 10px; width:110px" /></td>
       <td><button class="btn btn-primary" style="padding:8px 14px" onclick="setBalance(${u.id}, this)">Aggiorna</button></td>
     </tr>`).join('');
