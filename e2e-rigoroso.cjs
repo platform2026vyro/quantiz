@@ -129,11 +129,32 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   ok(Math.abs(me.j.user.dailyYieldTotal - 14.55) < 0.01, '/api/me espone la resa totale', String(me.j.user.dailyYieldTotal));
 
   // ================= 7. RENDITA UNA VOLTA AL GIORNO =================
-  step('7. RENDITA GIORNALIERA (una volta al giorno)');
-  const l1 = await httpsCall('/api/login', 'POST', { email: emailA, password: 'E2e123!' });
-  const l2 = await httpsCall('/api/login', 'POST', { email: emailA, password: 'E2e123!' });
-  ok(l1.j.user.dailyYield > 0, 'primo login accredita la rendita', String(l1.j.user.dailyYield));
-  ok(l2.j.user.dailyYield === 0, 'secondo login non riaccredita', String(l2.j.user.dailyYield));
+  step('7. RENDITA (matura in continuazione, non si gonfia a ogni login)');
+  // utente dedicato: nessuna chiamata precedente ha toccato la sua resa
+  const emailC = 'yld' + Date.now().toString().slice(-6) + '@quantx.ai';
+  const regC = await httpsCall('/api/register', 'POST', { email: emailC, password: 'E2e123!', name: 'E2e C' });
+  const tokenC = regC.j.token;
+  await httpsCall('/api/deposit', 'POST', { amount: 300, method: 'card' }, auth(tokenC));
+  await httpsCall('/api/activate-plan', 'POST', { plan: 3 }, auth(tokenC));   // Elite 200 -> 12 €/g
+  const l1 = await httpsCall('/api/login', 'POST', { email: emailC, password: 'E2e123!' });
+  const l2 = await httpsCall('/api/login', 'POST', { email: emailC, password: 'E2e123!' });
+  const l3 = await httpsCall('/api/login', 'POST', { email: emailC, password: 'E2e123!' });
+  const dailyRate = 12;
+  const totaleAccreditato = (l1.j.user.dailyYield || 0) + (l2.j.user.dailyYield || 0) + (l3.j.user.dailyYield || 0);
+  ok(l1.j.user.dailyYield >= 0 && l1.j.user.dailyYield <= dailyRate, 'un login accredita al massimo una giornata', String(l1.j.user.dailyYield));
+  ok(totaleAccreditato <= dailyRate, '3 login consecutivi NON gonfiano la resa', 'totale ' + totaleAccreditato + ' su ' + dailyRate + ' €/giorno');
+  const meY = await httpsCall('/api/me', 'GET', null, auth(tokenC));
+  ok(meY.j.user.dailyYieldTotal === dailyRate, 'resa giornaliera esposta correttamente', String(meY.j.user.dailyYieldTotal));
+  ok(meY.j.user.yieldAccruedToday > 0, 'resa maturata oggi disponibile (cresce col tempo)', String(meY.j.user.yieldAccruedToday));
+  const balPrima = meY.j.user.balance;
+  await sleep(1500);
+  const meY2 = await httpsCall('/api/me', 'GET', null, auth(tokenC));
+  ok(meY2.j.user.balance >= balPrima, 'il saldo non diminuisce e cresce con il tempo', balPrima + ' -> ' + meY2.j.user.balance);
+  // saldo SENZA piano attivo = nessuna resa
+  const noPlan = await httpsCall('/api/register', 'POST', { email: 'nopl' + Date.now().toString().slice(-6) + '@quantx.ai', password: 'E2e123!', name: 'No Plan' });
+  await httpsCall('/api/deposit', 'POST', { amount: 300, method: 'card' }, auth(noPlan.j.token));
+  const lN = await httpsCall('/api/login', 'POST', { email: noPlan.j.user.email, password: 'E2e123!' });
+  ok(lN.j.user.dailyYield === 0, 'senza piano attivo la resa e\' zero', String(lN.j.user.dailyYield));
 
   // ================= 8. PRELIEVI =================
   step('8. PRELIEVI (minimo 50, fee 5%, verifica)');

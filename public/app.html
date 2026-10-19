@@ -122,6 +122,14 @@
             Ogni piano che attivi è una posizione a se stante: puoi comprarne quanti vuoi e ognuno rende il suo.
           </p>
           <div id="positions-list"></div>
+          <div id="yield-live" style="display:none; margin-top:14px; padding:12px 14px; border-radius:12px; background:rgba(34,255,136,.08); border:1px solid rgba(34,255,136,.25); font-size:14px">
+            <div style="color:var(--muted); font-size:12.5px">Resa maturata oggi</div>
+            <div style="color:var(--green); font-weight:800; font-size:20px" id="yield-today">€0,0000</div>
+            <div style="height:6px; border-radius:99px; background:rgba(0,0,0,.35); margin:10px 0 8px; overflow:hidden">
+              <div id="yield-bar" style="height:100%; width:0%; background:linear-gradient(90deg,#22ff88,#00c853); border-radius:99px; transition:width 1s linear"></div>
+            </div>
+            <div style="color:var(--muted); font-size:12px" id="yield-note">si accredita automaticamente, anche senza aprire il pannello</div>
+          </div>
           <a href="plans.html" class="btn btn-green btn-block" style="margin-top:14px; text-decoration:none">＋ Attiva un altro piano</a>
         </div>
 

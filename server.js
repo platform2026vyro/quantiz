@@ -43,6 +43,7 @@ function migrate() {
   const cols = db.prepare('PRAGMA table_info(users)').all().map(c => c.name);
   if (!cols.includes('is_admin')) db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0');
   if (!cols.includes('last_yield_date')) db.exec('ALTER TABLE users ADD COLUMN last_yield_date TEXT');
+  if (!cols.includes('last_yield_at')) db.exec('ALTER TABLE users ADD COLUMN last_yield_at TEXT');
   const dcols = db.prepare('PRAGMA table_info(deposits)').all().map(c => c.name);
   if (!dcols.includes('method')) db.exec("ALTER TABLE deposits ADD COLUMN method TEXT DEFAULT 'card'");
 
@@ -206,24 +207,12 @@ app.post('/api/login', (req, res) => {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   db.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, token, expiresAt);
   
-  // Rendita giornaliera: calcolata su ogni posizione attiva, una volta al giorno
+  // Rendita: matura in continuo, si accredita proporzionalmente al tempo passato
   const today = new Date().toISOString().slice(0, 10);
   const plan = db.prepare('SELECT * FROM plans WHERE id = ?').get(user.plan_id) || { daily_yield_pct: 0, name: 'Starter' };
-  let yieldAmount = 0;
-  let newBalance = user.balance;
-  if (user.last_yield_date !== today) {
-    const positions = userPositions(user.id);
-    if (positions.length) {
-      for (const pos of positions) {
-        yieldAmount += Math.round(pos.amount * (pos.daily_yield_pct / 100) * 100) / 100;
-      }
-    } else {
-      yieldAmount = Math.round(user.balance * (plan.daily_yield_pct / 100) * 100) / 100;
-    }
-    yieldAmount = Math.round(yieldAmount * 100) / 100;
-    newBalance = Math.round((user.balance + yieldAmount) * 100) / 100;
-    db.prepare('UPDATE users SET balance = ?, last_yield_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, today, user.id);
-  }
+  const yld = creditYield(user);
+  const yieldAmount = yld.credited;
+  const newBalance = user.balance;
 
   const networkInfo = getNetworkInfo(user.id);
 
@@ -338,6 +327,12 @@ function publicUser(user) {
   const rows = db.prepare('SELECT claimed FROM signals WHERE user_id = ?').all(user.id);
   let streak = 0;
   for (const r of rows) { try { if (JSON.parse(r.claimed).length >= CONFIG.SIGNALS_PER_DAY) streak++; } catch (e) { /* ignora */ } }
+
+  // Resa giornaliera (posizioni) e quanto e' maturato oggi
+  const daily = dailyYieldFor(user);
+  const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+  const accruedToday = Math.round(daily * Math.max(0, (Date.now() - dayStart.getTime()) / DAY_MS) * 100) / 100;
+
   return {
     id: user.id, email: user.email, name: user.username,
     balance: user.balance,
@@ -348,13 +343,16 @@ function publicUser(user) {
     plan: user.plan_id, planName: plan ? plan.name : 'Starter',
     activePlans: pos.c,
     investedInPlans: Math.round(pos.s * 100) / 100,
-    dailyYieldTotal: Math.round(pos.y * 100) / 100,
+    dailyYieldTotal: daily,
+    yieldAccruedToday: accruedToday,
     isAdmin: !!user.is_admin,
   };
 }
 
 app.get('/api/me', auth, (req, res) => {
   const row = ensureSignals(req.uid);
+  // accredita la resa maturata dal ultimo controllo (il saldo cresce anche da solo)
+  creditYield(req.user);
   res.json({ user: publicUser(req.user), signals: { claimed: JSON.parse(row.claimed), profits: JSON.parse(row.profits) } });
 });
 
@@ -432,6 +430,7 @@ app.post('/api/claim-signal', auth, (req, res) => {
   const profit = generateSignalProfit(req.uid, i);
   
   // Aggiunge il profitto/perdita al saldo (se negativo, lo sottrae)
+  const yld = creditYield(req.user);
   const newBalance = Math.round((req.user.balance + profit) * 100) / 100;
   db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, req.uid);
   
@@ -515,6 +514,51 @@ function userPositions(userId) {
   `).all(userId);
 }
 
+// ---------- RENDITA: matura in continuo, si accredita sul tempo passato ----------
+// La resa non viene "data" tutta al login: matura ora per ora e si accredita
+// proporzionalmente al tempo trascorso dall'ultimo accredito (mai gonfiata).
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function dailyYieldFor(user) {
+  // La rendita nasce SOLO dai piani attivi: saldo senza piano = zero resa
+  const positions = userPositions(user.id);
+  let sum = 0;
+  for (const p of positions) sum += p.amount * (p.daily_yield_pct / 100);
+  return Math.round(sum * 100) / 100;
+}
+
+// Accredita la rendita maturata (proporzionale) e restituisce i dati
+function creditYield(user) {
+  const daily = dailyYieldFor(user);
+  if (!daily || daily <= 0) {
+    return { credited: 0, daily: daily || 0, accruedToday: 0 };
+  }
+  const now = Date.now();
+  const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+  const last = user.last_yield_at ? new Date(String(user.last_yield_at).replace(' ', 'T') + 'Z').getTime() : null;
+  // se non ha mai maturato, si parte da mezzanotte di oggi
+  const from = Math.max(last || dayStart.getTime(), dayStart.getTime());
+  const elapsed = Math.max(0, now - from);
+  const days = Math.min(elapsed / DAY_MS, 30);          // max 30 giorni di accumulo
+  const credited = Math.round(daily * days * 100) / 100;
+
+  if (credited > 0) {
+    const newBalance = Math.round((user.balance + credited) * 100) / 100;
+    db.prepare('UPDATE users SET balance = ?, last_yield_at = ?, last_yield_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .run(newBalance, new Date(now).toISOString().slice(0, 19).replace('T', ' '), new Date().toISOString().slice(0, 10), user.id);
+    user.balance = newBalance;
+  } else {
+    db.prepare('UPDATE users SET last_yield_at = ? WHERE id = ?')
+      .run(new Date(now).toISOString().slice(0, 19).replace('T', ' '), user.id);
+  }
+
+  // Quanto e' maturato oggi (per mostrarlo in dashboard)
+  const todayElapsed = Math.max(0, (now - dayStart.getTime()) / DAY_MS);
+  const accruedToday = Math.round(daily * todayElapsed * 100) / 100;
+
+  return { credited, daily, accruedToday };
+}
+
 app.post('/api/activate-plan', auth, (req, res) => {
   const plan = findPlan(req.body && req.body.plan);
   if (!plan) return res.status(400).json({ error: 'Piano non valido' });
@@ -535,6 +579,8 @@ app.post('/api/activate-plan', auth, (req, res) => {
 
   const left = Math.round((balance - cost) * 100) / 100;
   db.prepare('UPDATE users SET balance = ?, plan_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(left, plan.id, req.uid);
+  // la resa maturata fin qui viene accreditata al credito
+  const yld = creditYield(db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid));
 
   res.status(201).json({
     plan: { id: plan.id, name: plan.name, minDeposit: plan.min_deposit, maxDeposit: plan.max_deposit, dailyYieldPct: plan.daily_yield_pct, refBonusPct: plan.ref_bonus_pct },
@@ -555,6 +601,11 @@ app.get('/api/positions', auth, (req, res) => {
     count: positions.length,
     totalInvested: Math.round(positions.reduce((a, p) => a + p.amount, 0) * 100) / 100,
     dailyYield: Math.round(positions.reduce((a, p) => a + p.dailyYield, 0) * 100) / 100,
+    accruedToday: (function () {
+      const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+      const daily = positions.reduce((a, p) => a + p.dailyYield, 0);
+      return Math.round(daily * Math.max(0, (Date.now() - dayStart.getTime()) / 86400000) * 100) / 100;
+    })(),
   });
 });
 
@@ -607,6 +658,7 @@ app.post('/api/deposit', auth, (req, res) => {
   `).run(req.uid, amt, plan.id, method);
 
   // Aggiorna il saldo (il piano si attiva a parte, cosi' se ne possono comprare piu')
+  const yldDep = creditYield(req.user);
   const newBalance = Math.round((req.user.balance + amt) * 100) / 100;
   db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, req.uid);
 

@@ -45,7 +45,10 @@ async function withBtn(btn, label, fn) {
 
 function animateBalance(el, target) {
   if (!el) return;
-  const from = parseFloat(String(el.textContent).replace(/[^0-9.]/g, '')) || 0;
+  // Valore finale subito: se la tab e' in background rAF non gira e il saldo resterebbe vuoto
+  el.textContent = fmt(target);
+  if (typeof document !== 'undefined' && document.hidden) return;
+  const from = 0;
   const start = performance.now();
   const tick = (now) => {
     const t = Math.min(1, (now - start) / 700);
@@ -93,6 +96,18 @@ async function enterDash() {
   loadPositions();
   startFeed();
   drawChart();
+
+  // Il saldo si aggiorna da solo: la resa matura in continuazione
+  setInterval(async () => {
+    if (!token) return;
+    const me = await api('/api/me');
+    if (me.error) return;
+    animateBalance($('balance'), me.user.balance);
+    const sub = $('balance-sub');
+    if (sub && me.user.activePlans) {
+      sub.textContent = me.user.activePlans + (me.user.activePlans === 1 ? ' piano attivo · ' : ' piani attivi · ') + fmt0(me.user.dailyYieldTotal) + ' al giorno';
+    }
+  }, 30000);
 }
 
 // Le mie ultime operazioni
@@ -177,7 +192,43 @@ async function loadPositions() {
       '<div style="color:var(--muted); font-size:12px">capitale</div>' +
     '</div>' +
   '</div>';
+
+  // Resa che matura in tempo reale
+  const live = $('yield-live');
+  if (live) {
+    if (!d.count) { live.style.display = 'none'; }
+    else {
+      live.style.display = 'block';
+      yieldState.daily = d.dailyYield;
+      yieldState.accrued = d.accruedToday || 0;
+      yieldState.at = Date.now();
+      paintYield();
+    }
+  }
 }
+
+// Contatore della resa: cresce da solo mentre la pagina e' aperta
+const yieldState = { daily: 0, accrued: 0, at: Date.now() };
+function paintYield() {
+  const el = $('yield-today');
+  if (!el) return;
+  const elapsed = (Date.now() - yieldState.at) / 86400000;   // giorni passati da quando abbiamo letto i dati
+  const value = yieldState.accrued + yieldState.daily * elapsed;
+  el.textContent = '€' + value.toLocaleString('it-IT', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+
+  // barra di avanzamento della giornata
+  const bar = $('yield-bar');
+  if (bar && yieldState.daily > 0) {
+    const now = new Date();
+    const pct = Math.min(100, Math.round((now.getHours() * 60 + now.getMinutes()) / 1440 * 100));
+    bar.style.width = pct + '%';
+  }
+  const note = $('yield-note');
+  if (note && yieldState.daily > 0) {
+    note.textContent = 'resa giornaliera ' + fmt0(yieldState.daily) + ' · matura in continuazione, si accredita da solo';
+  }
+}
+setInterval(paintYield, 1000);
 
 // ---------- FIDELTÀ: codice referral + link invito ----------
 async function loadReferrals() {
