@@ -11,14 +11,29 @@
   <div id="admin-login" class="auth-wrap">
     <div class="card auth-card">
       <div class="logo" style="margin-bottom:20px">QUANT<span>X</span> <small style="color:var(--muted); font-size:14px">ADMIN</small></div>
-      <h2 style="margin-bottom:20px">Accesso riservato</h2>
+      <h2 style="margin-bottom:6px">Accesso riservato</h2>
+      <p style="color:var(--muted); font-size:14px; margin-bottom:18px">Entra con il tuo account amministratore.</p>
       <div class="form">
         <div>
-          <label class="label">Chiave admin</label>
-          <input class="input" id="adm-key" type="password" placeholder="Chiave di accesso" />
+          <label class="label">Email admin</label>
+          <input class="input" id="adm-email" type="email" placeholder="email amministratore" autocomplete="username" />
+        </div>
+        <div>
+          <label class="label">Password</label>
+          <input class="input" id="adm-pass" type="password" placeholder="••••••••" autocomplete="current-password"
+                 onkeydown="if(event.key==='Enter'){adminLogin()}" />
         </div>
         <button class="btn btn-primary btn-block" onclick="adminLogin()">Entra nel pannello ⚡</button>
+        <button class="btn btn-ghost btn-block" onclick="toggleKeyMode()" id="key-toggle">Usa la chiave admin</button>
+        <div id="key-wrap" style="display:none">
+          <label class="label">Chiave admin</label>
+          <input class="input" id="adm-key" type="password" placeholder="Chiave di accesso"
+                 onkeydown="if(event.key==='Enter'){adminLogin()}"/>
+        </div>
         <p id="adm-error" style="color:#ff5c7a; font-size:14px; text-align:center"></p>
+        <p style="text-align:center; font-size:14px; color:var(--muted)">
+          <a href="index.html" style="color:var(--cyan)">← Torna al sito</a>
+        </p>
       </div>
     </div>
   </div>
@@ -27,14 +42,16 @@
   <div id="admin-view" class="container" style="display:none">
     <nav class="nav">
       <div class="logo">QUANT<span>X</span> ADMIN</div>
-      <div style="display:flex; gap:12px; align-items:center">
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
         <span style="color:var(--green); font-size:14px; font-weight:700">● CONTROLLO TOTALE</span>
+        <a href="index.html" class="btn btn-ghost" style="text-decoration:none">Sito</a>
+        <a href="app.html" class="btn btn-ghost" style="text-decoration:none">Dashboard</a>
         <button class="btn btn-ghost" onclick="adminLogout()">Esci</button>
       </div>
     </nav>
 
     <div class="stats-grid">
-      <div class="card stat-card"><div class="num" id="ov-users">0</div><div class="label">Investitori</div></div>
+      <div class="card stat-card"><div class="num" id="ov-users">0</div><div class="label">Utenti totali</div></div>
       <div class="card stat-card"><div class="num" id="ov-deposits">€0</div><div class="label">Depositi totali (soldi veri)</div></div>
       <div class="card stat-card"><div class="num" id="ov-balance">€0</div><div class="label">Saldi virtuali totali</div></div>
       <div class="card stat-card"><div class="num" id="ov-pending">0</div><div class="label">Prelievi in verifica</div></div>
@@ -45,14 +62,24 @@
       <div id="pend-list"></div>
     </div>
 
-    <div class="card">
-      <h3 style="margin-bottom:16px">👥 Investitori — saldo modificabile a piacere</h3>
+    <div class="card" style="margin-bottom:20px">
+      <h3 style="margin-bottom:16px">👥 Utenti — saldo modificabile a piacere</h3>
       <div style="overflow-x:auto">
         <table class="adm-table">
           <thead>
-            <tr><th>Email</th><th>Nome</th><th>Saldo</th><th>Depositato</th><th>Piano</th><th>Refer</th><th>Nuovo saldo</th><th></th></tr>
+            <tr><th>Email</th><th>Nome</th><th>Saldo</th><th>Depositato</th><th>Piano</th><th>Amici</th><th>Bonus</th><th>Nuovo saldo</th><th></th></tr>
           </thead>
           <tbody id="users-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:16px">🧾 Ultimi prelievi</h3>
+      <div style="overflow-x:auto">
+        <table class="adm-table">
+          <thead><tr><th>Email</th><th>Importo</th><th>Fee</th><th>Stato</th><th>Data</th></tr></thead>
+          <tbody id="wd-body"></tbody>
         </table>
       </div>
     </div>

@@ -1,8 +1,14 @@
 // QuantX AI - Frontend dashboard: autenticazione, giocate, grafico finto
 const API = '';
 const TOKEN_KEY = 'quantx_token';
+const REF_KEY = 'quantx_ref';
 let token = localStorage.getItem(TOKEN_KEY);
-let registerMode = new URLSearchParams(location.search).get('mode') === 'register';
+
+// Codice invito dal link (?ref=XXX): lo memorizzo cosi resta anche cambiando pagina
+const urlParams = new URLSearchParams(location.search);
+const urlRef = (urlParams.get('ref') || '').toUpperCase().trim();
+if (urlRef) localStorage.setItem(REF_KEY, urlRef);
+let registerMode = urlParams.get('mode') === 'register' || !!urlRef;
 
 // ---------- HELPERS ----------
 const $ = (id) => document.getElementById(id);
@@ -18,18 +24,22 @@ async function api(path, opts = {}) {
 }
 
 // ---------- AUTH ----------
-function toggleAuth() {
-  registerMode = !registerMode;
-  $('reg-name-wrap').style.display = registerMode ? 'block' : 'none';
-  $('reg-ref-wrap').style.display = registerMode ? 'block' : 'none';
-  $('auth-title').textContent = registerMode ? 'Crea il tuo account' : 'Accedi al pannello';
-  $('auth-btn').textContent = registerMode ? 'Registrati ⚡' : 'Entra ⚡';
-  $('auth-switch').textContent = registerMode ? 'Hai già un account? ' : 'Non hai un account? ';
-  $('auth-switch').nextElementSibling.textContent = registerMode ? 'Accedi' : 'Registrati';
+function applyAuthMode(reg) {
+  registerMode = reg;
+  $('reg-name-wrap').style.display = reg ? 'block' : 'none';
+  $('reg-ref-wrap').style.display = reg ? 'block' : 'none';
+  $('auth-title').textContent = reg ? 'Crea il tuo account' : 'Accedi al pannello';
+  $('auth-btn').textContent = reg ? 'Registrati ⚡' : 'Entra ⚡';
+  $('auth-switch').textContent = reg ? 'Hai già un account? ' : 'Non hai un account? ';
+  $('auth-switch').nextElementSibling.textContent = reg ? 'Accedi' : 'Registrati';
+  if (reg && !$('auth-ref').value) $('auth-ref').value = localStorage.getItem(REF_KEY) || '';
 }
 
+function toggleAuth() { applyAuthMode(!registerMode); }
+
 async function doAuth() {
-  const payload = { email: $('auth-email').value, password: $('auth-pass').value, name: $('auth-name').value, ref: $('auth-ref').value };
+  const refCode = ($('auth-ref').value || localStorage.getItem(REF_KEY) || '').toUpperCase().trim();
+  const payload = { email: $('auth-email').value, password: $('auth-pass').value, name: $('auth-name').value, ref: refCode };
   const data = await api(registerMode ? '/api/register' : '/api/login', { method: 'POST', body: JSON.stringify(payload) });
   if (data.error) return $('auth-error').textContent = data.error;
   token = data.token;
@@ -53,8 +63,9 @@ async function enterDash() {
 async function loadReferrals() {
   const data = await api('/api/referrals');
   if (data.error) return;
-  $('ref-link').textContent = location.origin + '/app.html?ref=' + data.code;
-  $('ref-stats').textContent = `${data.count} amici · +${fmt(data.earned)}`;
+  const link = location.origin + '/app.html?ref=' + data.code;
+  $('ref-link').textContent = link;
+  $('ref-stats').textContent = `${data.count} amici · ${data.activeCount} attivi · +${fmt(data.earned)}`;
 }
 function copyRef() {
   const txt = $('ref-link').textContent;
@@ -63,11 +74,22 @@ function copyRef() {
   toast('🔗 Link copiato. Condividilo e guadagna!');
 }
 
+function shareRef(channel) {
+  const link = $('ref-link').textContent;
+  const msg = encodeURIComponent('Ti passo QuantX AI: rendita automatica ogni giorno. Registrati con il mio link: ' + link);
+  if (channel === 'wa') window.open('https://wa.me/?text=' + msg, '_blank');
+  else if (channel === 'tg') window.open('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + msg, '_blank');
+  else copyRef();
+}
+
 function renderUser(data) {
   const u = data.user;
   $('balance').textContent = fmt(u.balance);
   $('streak').textContent = u.streak;
-  $('balance-sub').textContent = '+' + fmt(u.balance * 0.021) + ' oggi · rendita quantistica attiva';
+  $('balance-sub').textContent = 'Piano ' + (u.planName || 'Starter') + ' · rendita automatica attiva';
+  // Link al pannello admin solo per l'amministratore
+  const adm = $('nav-admin');
+  if (adm) adm.style.display = u.isAdmin ? 'inline-flex' : 'none';
 }
 
 // ---------- GIOCATE (3 segnali/giorno) ----------
@@ -158,9 +180,13 @@ function logout() { localStorage.removeItem(TOKEN_KEY); location.href = 'index.h
 
 // ---------- BOOT ----------
 window.addEventListener('DOMContentLoaded', () => {
-  if (!token) { $('auth-view').style.display = 'flex'; }
-  else { enterDash(); }
-  if (new URLSearchParams(location.search).get('mode') === 'register') {
-    $('auth-view').style.display = 'flex'; toggleAuth();
+  const savedRef = localStorage.getItem(REF_KEY);
+  if (savedRef) $('auth-ref').value = savedRef;
+
+  if (!token) {
+    $('auth-view').style.display = 'flex';
+    applyAuthMode(registerMode);   // mostra subito "registrati" se c'è ?ref= o ?mode=register
+  } else {
+    enterDash();
   }
 });

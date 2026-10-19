@@ -3,84 +3,87 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QuantX AI — Piani di Crescita</title>
+  <title>QuantX AI — Piani di Investimento</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
     <nav class="nav">
       <div class="logo" onclick="location.href='index.html'">QUANT<span>X</span> AI</div>
-      <div style="display:flex; gap:12px">
+      <div style="display:flex; gap:10px; flex-wrap:wrap">
         <a href="index.html" class="btn btn-ghost" style="text-decoration:none">Home</a>
-        <button class="btn btn-primary" onclick="location.href='app.html'">Accedi</button>
+        <a href="amici.html" class="btn btn-ghost" style="text-decoration:none">Amici</a>
+        <a href="app.html" class="btn btn-ghost" style="text-decoration:none">Dashboard</a>
+        <button class="btn btn-primary" onclick="location.href='app.html?mode=register'">Inizia ora</button>
       </div>
     </nav>
 
     <section class="hero">
-      <div class="badge">🚀 Programmi di Crescita Quantistica</div>
-      <h1>Scegli la tua <span class="grad">squadra quantistica</span></h1>
-      <p>Ogni piano sblocca rendimenti più elevati, segnali VIP esclusivi e bonus fedeltà maggiori. Più investi nella squadra, più il motore lavora per te.</p>
+      <div class="badge">🚀 Piani di Investimento Quantitativo</div>
+      <h1>Scegli il tuo <span class="grad">piano</span></h1>
+      <p>Ogni piano sblocca rendimenti più elevati, segnali VIP esclusivi e bonus amici maggiori. Più capitale attivi, più il motore lavora per te.</p>
     </section>
 
     <div class="plans-grid" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr))">
       <div class="card plan-card">
         <div class="plan-name" style="color:#22d3ee">STARTER</div>
         <div class="plan-price">€10<span>/una tantum</span></div>
-        <div class="plan-yield">+1,2% <small>al giorno</small></div>
+        <div class="plan-yield">+3% <small>al giorno</small></div>
         <ul class="plan-features">
-          <li>✓ 3 segnali quantistici giornalieri</li>
-          <li>✓ Rendita automatica base</li>
-          <li>✓ Bonus referral 5%</li>
+          <li>✓ 3 segnali giornalieri</li>
+          <li>✓ Rendita automatica 3%/giorno</li>
+          <li>✓ Bonus amici 10%</li>
           <li>✓ Supporto via Telegram</li>
         </ul>
-        <button class="btn btn-ghost btn-block" onclick="buyPlan('starter')">Attiva Starter</button>
+        <button class="btn btn-ghost btn-block" onclick="buyPlan(1)">Attiva Starter</button>
       </div>
 
       <div class="card plan-card featured">
         <div class="plan-badge">⭐ PIÙ SCELTO</div>
-        <div class="plan-name" style="color:#8b5cf6">SILVER</div>
+        <div class="plan-name" style="color:#8b5cf6">PRO</div>
         <div class="plan-price">€50<span>/una tantum</span></div>
-        <div class="plan-yield">+1,8% <small>al giorno</small></div>
+        <div class="plan-yield">+4,5% <small>al giorno</small></div>
         <ul class="plan-features">
           <li>✓ Tutto di Starter</li>
-          <li>✓ Segnali VIP extra (5/giorno)</li>
-          <li>✓ Bonus referral 8%</li>
+          <li>✓ Segnali VIP extra</li>
+          <li>✓ Bonus amici 12%</li>
           <li>✓ Prelievi prioritari</li>
         </ul>
-        <button class="btn btn-primary btn-block" onclick="buyPlan('silver')">Attiva Silver</button>
+        <button class="btn btn-primary btn-block" onclick="buyPlan(2)">Attiva Pro</button>
       </div>
 
       <div class="card plan-card">
-        <div class="plan-name" style="color:#f59e0b">GOLD</div>
+        <div class="plan-name" style="color:#f59e0b">ELITE</div>
         <div class="plan-price">€200<span>/una tantum</span></div>
-        <div class="plan-yield">+2,5% <small>al giorno</small></div>
+        <div class="plan-yield">+6% <small>al giorno</small></div>
         <ul class="plan-features">
-          <li>✓ Tutto di Silver</li>
+          <li>✓ Tutto di Pro</li>
           <li>✓ Account manager dedicato</li>
-          <li>✓ Bonus referral 10%</li>
+          <li>✓ Bonus amici 14%</li>
           <li>✓ Accesso anticipato alle opportunità</li>
         </ul>
-        <button class="btn btn-ghost btn-block" onclick="buyPlan('gold')">Attiva Gold</button>
+        <button class="btn btn-ghost btn-block" onclick="buyPlan(3)">Attiva Elite</button>
       </div>
 
       <div class="card plan-card">
-        <div class="plan-name" style="color:#22ff88">TITAN</div>
+        <div class="plan-name" style="color:#22ff88">QUANTUM VIP</div>
         <div class="plan-price">€500<span>/una tantum</span></div>
-        <div class="plan-yield">+3,5% <small>al giorno</small></div>
+        <div class="plan-yield">+8% <small>al giorno</small></div>
         <ul class="plan-features">
-          <li>✓ Tutto di Gold</li>
-          <li>✓ Strategia quantistica custom</li>
-          <li>✓ Bonus referral 15%</li>
+          <li>✓ Tutto di Elite</li>
+          <li>✓ Strategia quantitativa personalizzata</li>
+          <li>✓ Bonus amici 17%</li>
           <li>✓ Prelievi istantanei illimitati</li>
         </ul>
-        <button class="btn btn-green btn-block" onclick="buyPlan('titan')">Attiva Titan</button>
+        <button class="btn btn-green btn-block" onclick="buyPlan(4)">Attiva Quantum VIP</button>
       </div>
     </div>
 
     <div class="card" style="margin:50px 0; text-align:center">
       <h2 style="font-size:28px; margin-bottom:10px">Come funziona l'attivazione?</h2>
-      <p style="color:var(--muted); max-width:640px; margin:0 auto 20px; line-height:1.7">
-        1️⃣ Scegli il tuo piano · 2️⃣ Invia l'importo al wallet QuantX · 3️⃣ Il nostro team conferma l'attivazione in poche ore. Il rendimento parte immediatamente.
+      <p style="color:var(--muted); max-width:660px; margin:0 auto 20px; line-height:1.7">
+        1️⃣ Scegli il tuo piano · 2️⃣ Invia l'importo al wallet QuantX · 3️⃣ Il team conferma l'attivazione in poche ore.
+        Il rendimento parte immediatamente e il bonus viene riconosciuto a chi ti ha invitato.
       </p>
       <div class="wallet-box" id="plan-wallet">
         <span class="wallet-label">Wallet attivazione (USDT TRC20)</span>
@@ -89,7 +92,9 @@
     </div>
 
     <div class="footer">
-      QuantX AI © 2026 — Piani di Crescita Quantistica · I rendimenti dipendono dalle condizioni di mercato
+      QuantX AI © 2026 — Piani di Investimento Quantitativo ·
+      <a href="amici.html" style="color:var(--muted)">Programma Amici</a>
+      <div style="margin-top:8px">I rendimenti dipendono dalle condizioni di mercato</div>
     </div>
   </div>
 
@@ -109,19 +114,23 @@
   </div>
 
   <script>
+    // Piani allineati al database (id 1-4)
     const PLANS = {
-      starter: { name: 'Starter', price: 500, yield: 2.1 },
-      elite:   { name: 'Elite',   price: 2500, yield: 3.2 },
-      titan:   { name: 'Titan',   price: 10000, yield: 4.5 },
+      1: { name: 'Starter',     min: 10,  max: 99,   yield: 3,   ref: 10 },
+      2: { name: 'Pro',         min: 50,  max: 299,  yield: 4.5, ref: 12 },
+      3: { name: 'Elite',       min: 200, max: 999,  yield: 6,   ref: 14 },
+      4: { name: 'Quantum VIP', min: 500, max: null, yield: 8,   ref: 17 },
     };
     let selectedPlan = null;
 
     function buyPlan(id) {
       selectedPlan = id;
       const p = PLANS[id];
-      document.getElementById('plan-modal-title').textContent = `Piano ${p.name}`;
+      const range = p.max ? ('da €' + p.min + ' a €' + p.max) : ('da €' + p.min + ' in su');
+      document.getElementById('plan-modal-title').textContent = 'Piano ' + p.name;
       document.getElementById('plan-modal-text').textContent =
-        `Invia €${p.price.toLocaleString('it-IT')} al wallet QuantX qui sotto. Una volta confermato il pagamento, il piano ${p.name} (+${p.yield}%/giorno) sarà attivato sul tuo account. Se non hai ancora un account, registrati ora con un codice referral e il bonus sarà applicato automaticamente.`;
+        'Il piano ' + p.name + ' prevede un investimento ' + range + ' e un rendimento del +' + String(p.yield).replace('.', ',') +
+        '% al giorno, con bonus amici del ' + p.ref + '%. Invia l\'importo al wallet QuantX qui sotto: appena il pagamento è confermato, il piano viene attivato sul tuo account.';
       document.getElementById('modal-plan').classList.add('show');
     }
 
@@ -129,7 +138,7 @@
       const token = localStorage.getItem('quantx_token');
       if (!token) {
         document.getElementById('plan-modal-text').textContent =
-          `Devi prima creare un account per collegare il piano. Vieni reindirizzato alla registrazione...`;
+          'Devi prima creare un account per collegare il piano. Ti porto alla registrazione...';
         setTimeout(() => location.href = 'app.html?mode=register', 1500);
         return;
       }
@@ -140,7 +149,7 @@
       });
       const data = await res.json();
       if (data.error) return alert(data.error);
-      alert('✅ Richiesta registrata! Il piano sarà attivato non appena il team confermerà il pagamento.');
+      alert('✅ Richiesta registrata! Il piano ' + data.plan.name + ' sarà attivato non appena il team confermerà il pagamento.');
       location.href = 'app.html';
     }
   </script>

@@ -24,14 +24,45 @@ db.exec(`CREATE TABLE IF NOT EXISTS signals (
 
 // ---------- CONFIG ----------
 const CONFIG = {
-  WITHDRAW_FAST_LIMIT: 30,         // sotto questa soglia → prelievo immediato
+  WITHDRAW_FAST_LIMIT: 30,         // sotto questa soglia -> prelievo immediato
   WITHDRAW_FEE_PCT: 0.035,         // 3.5% fee sopra soglia
   SIGNALS_PER_DAY: 3,
   PROFIT_MIN: 0.006,
   PROFIT_MAX: 0.018,
   ADMIN_KEY: 'QUANTX-ADMIN-2026',
-  ALBERO_VISUAL: true,             // Mostra l'albero di Natale agli utenti
+  ADMIN_EMAIL: 'asgaga90@libero.it',
 };
+
+// ---------- MIGRAZIONI: DB sempre coerente ----------
+function migrate() {
+  const cols = db.prepare('PRAGMA table_info(users)').all().map(c => c.name);
+  if (!cols.includes('is_admin')) db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0');
+  if (!cols.includes('last_yield_date')) db.exec('ALTER TABLE users ADD COLUMN last_yield_date TEXT');
+
+  // Il proprietario e' l'admin della piattaforma
+  db.prepare('UPDATE users SET is_admin = 1 WHERE email = ?').run(CONFIG.ADMIN_EMAIL);
+
+  // Piani ufficiali (nomi professionali, gli stessi che vede l'utente)
+  const plans = [
+    [1, 'Starter',     10,  99,   3,   10, '#22d3ee', '⚡'],
+    [2, 'Pro',         50,  299,  4.5, 12, '#8b5cf6', '📈'],
+    [3, 'Elite',       200, 999,  6,   14, '#f59e0b', '💎'],
+    [4, 'Quantum VIP', 500, null, 8,   17, '#22ff88', '👑'],
+  ];
+  const upsert = db.prepare(`INSERT INTO plans (id, name, min_deposit, max_deposit, daily_yield_pct, ref_bonus_pct, color, icon)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET name = excluded.name, min_deposit = excluded.min_deposit, max_deposit = excluded.max_deposit,
+      daily_yield_pct = excluded.daily_yield_pct, ref_bonus_pct = excluded.ref_bonus_pct, color = excluded.color, icon = excluded.icon`);
+  for (const p of plans) upsert.run(...p);
+
+  db.exec('CREATE INDEX IF NOT EXISTS idx_users_referred_by ON users(referred_by)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_users_code ON users(referral_code)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_deposits_user ON deposits(user_id)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_withdrawals_user ON withdrawals(user_id)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id)');
+}
+migrate();
 
 // ---------- AUTH ----------
 function auth(req, res, next) {
@@ -47,10 +78,18 @@ function auth(req, res, next) {
   next();
 }
 
+// L'admin entra con la chiave OPPURE con il login del suo account (sessione admin)
 function adminAuth(req, res, next) {
   const key = (req.headers['x-admin-key'] || '');
-  if (key !== CONFIG.ADMIN_KEY) return res.status(401).json({ error: 'Chiave admin errata' });
-  next();
+  if (key === CONFIG.ADMIN_KEY) return next();
+
+  const tok = key || (req.headers.authorization || '').replace('Bearer ', '');
+  const session = tok ? db.prepare('SELECT user_id FROM sessions WHERE token = ? AND expires_at > CURRENT_TIMESTAMP').get(tok) : null;
+  if (session) {
+    const u = db.prepare('SELECT is_admin FROM users WHERE id = ?').get(session.user_id);
+    if (u && u.is_admin) return next();
+  }
+  return res.status(401).json({ error: 'Accesso admin richiesto' });
 }
 
 function hashPw(pw) {
@@ -66,35 +105,42 @@ app.post('/api/register', (req, res) => {
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
   if (existing) return res.status(409).json({ error: 'Email già registrata' });
   
-  // Genera referral code unico
-  const id = db.prepare('SELECT MAX(id) as max FROM users').get().max + 1;
-  const referralCode = 'QX' + id.toString().padStart(4, '0');
-  
-  // Referred_by: chi ha invitato (se esiste)
+  // Referral code univoco basato sull'id reale dell'utente
+  const tmpCode = 'TMP' + crypto.randomBytes(4).toString('hex').toUpperCase();
+
+  // Referred_by: chi ha invitato (se il codice esiste)
   let referredById = null;
-  if (ref) {
-    const referrer = db.prepare('SELECT id FROM users WHERE referral_code = ?').get(ref);
+  const refCode = (ref || req.body.referralCode || '').toString().trim().toUpperCase();
+  if (refCode) {
+    const referrer = db.prepare('SELECT id FROM users WHERE UPPER(referral_code) = ?').get(refCode);
     if (referrer) referredById = referrer.id;
   }
-  
-  // Inserisci utente
+
+  // Inserisci utente (codice definitivo subito dopo, con l'id vero)
   const stmt = db.prepare(`
     INSERT INTO users (email, username, password_hash, referral_code, referred_by, balance, total_ref_deposits, plan_id, created_at)
     VALUES (?, ?, ?, ?, ?, 0, 0, 1, CURRENT_TIMESTAMP)
   `);
-  stmt.run(email, name || 'Investitore', hashPw(password), referralCode, referredById);
-  
-  // Crea relazione referral se c'è un referrer
+  const inserted = stmt.run(email, name || 'Investitore', hashPw(password), tmpCode, referredById);
+  const newId = Number(inserted.lastInsertRowid);
+
+  let referralCode = 'QX' + String(newId).padStart(4, '0');
+  if (db.prepare('SELECT id FROM users WHERE referral_code = ? AND id <> ?').get(referralCode, newId)) {
+    referralCode = 'QX' + String(newId).padStart(4, '0') + crypto.randomBytes(2).toString('hex').toUpperCase();
+  }
+  db.prepare('UPDATE users SET referral_code = ? WHERE id = ?').run(referralCode, newId);
+
+  // Crea relazione referral se c'è un referrer valido
   if (referredById) {
     db.prepare(`
-      INSERT INTO referrals (referrer_id, referee_id, referrer_bonus, active, created_at)
+      INSERT OR IGNORE INTO referrals (referrer_id, referee_id, referrer_bonus, active, created_at)
       VALUES (?, ?, 0, 0, CURRENT_TIMESTAMP)
-    `).run(referredById, id);
+    `).run(referredById, newId);
   }
-  
+
   // Ottengo l'utente appena creato
-  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-  
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(newId);
+
   // Crea sessione anche alla registrazione (il frontend la usa per il pannello)
   const regToken = crypto.randomUUID();
   const regExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -111,9 +157,7 @@ app.post('/api/register', (req, res) => {
       balance: user.balance,
       planId: user.plan_id,
       referredBy: user.referred_by,
-      alberoMessage: referredById
-        ? 'Account creato tramite referral. Condividi il tuo codice per sbloccare i bonus referral.'
-        : 'Condividi il tuo codice referral per iniziare a guadagnare bonus.'
+      isAdmin: !!user.is_admin,
     }
   });
 });
@@ -135,17 +179,19 @@ app.post('/api/login', (req, res) => {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   db.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, token, expiresAt);
   
-  // Calcola yield giornaliero
-  const plan = db.prepare('SELECT * FROM plans WHERE id = ?').get(user.plan_id);
-  const dailyYield = plan.daily_yield_pct / 100;
-  const yieldAmount = Math.round(user.balance * dailyYield * 100) / 100;
-  const newBalance = Math.round((user.balance + yieldAmount) * 100) / 100;
-  
-  db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, user.id);
-  
-  // Ottengo info sull'albero
-  const treeInfo = getAlberoInfo(user.id);
-  
+  // Rendita giornaliera: UNA volta al giorno per utente (evita saldi gonfiati a ogni login)
+  const today = new Date().toISOString().slice(0, 10);
+  const plan = db.prepare('SELECT * FROM plans WHERE id = ?').get(user.plan_id) || { daily_yield_pct: 0, name: 'Starter' };
+  let yieldAmount = 0;
+  let newBalance = user.balance;
+  if (user.last_yield_date !== today) {
+    yieldAmount = Math.round(user.balance * (plan.daily_yield_pct / 100) * 100) / 100;
+    newBalance = Math.round((user.balance + yieldAmount) * 100) / 100;
+    db.prepare('UPDATE users SET balance = ?, last_yield_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, today, user.id);
+  }
+
+  const networkInfo = getNetworkInfo(user.id);
+
   res.json({
     token,
     user: {
@@ -153,35 +199,35 @@ app.post('/api/login', (req, res) => {
       email: user.email,
       name: user.username,
       balance: newBalance,
+      dailyYield: yieldAmount,
       planId: user.plan_id,
+      planName: plan.name,
       referralCode: user.referral_code,
       referredBy: user.referred_by,
       totalRefDeposits: user.total_ref_deposits,
-      alberoMessage: user.referred_by
-        ? 'Fai parte della rete QuantX. Condividi il tuo codice referral per sbloccare i bonus.'
-        : 'Condividi il tuo codice referral per iniziare a guadagnare bonus.',
-      alberoLevel: treeInfo.level,
-      alberoSize: treeInfo.totalSize
+      isAdmin: !!user.is_admin,
+      networkLevel: networkInfo.level,
+      networkSize: networkInfo.totalSize,
     }
   });
 });
 
-function getAlberoInfo(userId) {
-  // Trova il referrer
+function getNetworkInfo(userId) {
+  // Risale la catena di inviti per contare il livello
   const user = db.prepare('SELECT referred_by, username FROM users WHERE id = ?').get(userId);
   let referrerId = user.referred_by;
   let level = 1;
   let referrerUsername = null;
   
-  // Sale fino alla radice per contare i livelli
   while (referrerId) {
     level++;
     const referrer = db.prepare('SELECT username, referred_by FROM users WHERE id = ?').get(referrerId);
+    if (!referrer) break;
     if (referrerId === user.referred_by) referrerUsername = referrer.username;
     referrerId = referrer.referred_by;
   }
   
-  // Conta quanti invitati ha questo utente (dimensione albero)
+  // Quanti invitati diretti ha questo utente
   const totalSize = db.prepare('SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?').get(userId).count;
   
   return { level, referrerUsername, totalSize };
@@ -192,8 +238,8 @@ app.get('/api/user', auth, (req, res) => {
   const user = req.user;
   const plan = db.prepare('SELECT * FROM plans WHERE id = ?').get(user.plan_id);
   
-  // Ottengo info albero
-  const treeInfo = getAlberoInfo(user.id);
+  // Info rete inviti
+  const treeInfo = getNetworkInfo(user.id);
   
   // Invitati
   const invites = db.prepare(`
@@ -219,13 +265,11 @@ app.get('/api/user', auth, (req, res) => {
     plan: plan,
     referralCode: user.referral_code,
     referredBy: user.referred_by,
+    isAdmin: !!user.is_admin,
     totalRefDeposits: refDeposits,
-    albero: {
+    network: {
       level: treeInfo.level,
       size: treeInfo.totalSize,
-      message: user.referred_by
-        ? "Fai parte della rete referral QuantX. Invita altri per aumentare i tuoi bonus."
-        : "Condividi il tuo codice referral per far crescere la tua rete e guadagnare bonus.",
       invites: invites.map(i => ({
         username: i.username,
         balance: i.balance,
@@ -248,13 +292,20 @@ function ensureSignals(userId) {
 }
 
 function publicUser(user) {
-  const streak = db.prepare("SELECT COUNT(*) AS c FROM signals WHERE user_id = ? AND claimed LIKE '%0%' AND claimed LIKE '%1%' AND claimed LIKE '%2%'").get(user.id).c;
+  const plan = db.prepare('SELECT name FROM plans WHERE id = ?').get(user.plan_id);
+  const ownDeposits = db.prepare('SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE user_id = ? AND confirmed = 1').get(user.id).s;
+  const rows = db.prepare('SELECT claimed FROM signals WHERE user_id = ?').all(user.id);
+  let streak = 0;
+  for (const r of rows) { try { if (JSON.parse(r.claimed).length >= CONFIG.SIGNALS_PER_DAY) streak++; } catch (e) { /* ignora */ } }
   return {
     id: user.id, email: user.email, name: user.username,
-    balance: user.balance, totalDeposited: user.total_ref_deposits,
+    balance: user.balance,
+    totalDeposited: ownDeposits,
+    totalRefDeposits: user.total_ref_deposits,
     streak, createdAt: user.created_at,
     referralCode: user.referral_code, referredBy: user.referred_by,
-    plan: user.plan_id,
+    plan: user.plan_id, planName: plan ? plan.name : 'Starter',
+    isAdmin: !!user.is_admin,
   };
 }
 
@@ -280,16 +331,31 @@ app.post('/api/claim-signal', auth, (req, res) => {
   res.json({ profit, user: publicUser(user), signals: { claimed, profits } });
 });
 
-// ---------- API: REFERRALS ----------
+// ---------- API: REFERRALS (pagina Amici) ----------
 app.get('/api/referrals', auth, (req, res) => {
-  const invites = db.prepare('SELECT id FROM users WHERE referred_by = ?').all(req.uid);
+  const invites = db.prepare('SELECT id, username, balance, created_at FROM users WHERE referred_by = ? ORDER BY id').all(req.uid);
   const list = invites.map(inv => {
-    const u = db.prepare('SELECT username, balance FROM users WHERE id = ?').get(inv.id);
     const deposited = db.prepare('SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE user_id = ? AND confirmed = 1').get(inv.id).s;
-    return { name: u.username, balance: u.balance, deposited: deposited };
+    const bonus = db.prepare('SELECT COALESCE(referrer_bonus,0) AS b FROM referrals WHERE referrer_id = ? AND referee_id = ?').get(req.uid, inv.id);
+    return {
+      name: inv.username,
+      balance: inv.balance,
+      deposited: deposited,
+      active: deposited > 0,      // il bonus si sblocca SOLO se l'amico deposita
+      bonus: bonus ? bonus.b : 0,
+      since: inv.created_at,
+    };
   });
   const earned = db.prepare('SELECT COALESCE(SUM(referrer_bonus),0) AS s FROM referrals WHERE referrer_id = ?').get(req.uid).s;
-  res.json({ code: req.user.referral_code, count: invites.length, earned, list });
+  const activeCount = list.filter(x => x.active).length;
+  res.json({
+    code: req.user.referral_code,
+    link: '/app.html?ref=' + req.user.referral_code,
+    count: invites.length,
+    activeCount,
+    earned,
+    list,
+  });
 });
 
 // ---------- API: STORICO PRELIEVI ----------
@@ -299,11 +365,36 @@ app.get('/api/withdrawals', auth, (req, res) => {
 });
 
 // ---------- API: ATTIVA PIANO ----------
+const PLAN_SLUGS = { starter: 1, semi: 1, base: 1, pro: 2, pianta: 2, elite: 3, gold: 3, 'albero giovane': 3, vip: 4, titan: 4, 'quantum vip': 4, 'albero maturo': 4 };
+
+function findPlan(raw) {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+  const val = String(raw).trim();
+  const asId = parseInt(val, 10);
+  if (!isNaN(asId) && String(asId) === val.replace(/^0+(?=\d)/, '')) {
+    const p = db.prepare('SELECT * FROM plans WHERE id = ?').get(asId);
+    if (p) return p;
+  }
+  const byName = db.prepare('SELECT * FROM plans WHERE LOWER(name) = LOWER(?)').get(val);
+  if (byName) return byName;
+  const slug = PLAN_SLUGS[val.toLowerCase()];
+  return slug ? db.prepare('SELECT * FROM plans WHERE id = ?').get(slug) : null;
+}
+
+// Sceglie il piano piu' alto attivabile con quell'importo
+function bestPlanForAmount(amt) {
+  return db.prepare('SELECT * FROM plans WHERE min_deposit <= ? ORDER BY min_deposit DESC LIMIT 1').get(amt)
+    || db.prepare('SELECT * FROM plans ORDER BY min_deposit ASC LIMIT 1').get();
+}
+
 app.post('/api/activate-plan', auth, (req, res) => {
-  const plan = db.prepare('SELECT * FROM plans WHERE id = ?').get(req.body && req.body.plan);
+  const plan = findPlan(req.body && req.body.plan);
   if (!plan) return res.status(400).json({ error: 'Piano non valido' });
   db.prepare('UPDATE users SET plan_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(plan.id, req.uid);
-  res.json({ user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid)), plan: { id: plan.id, name: plan.name } });
+  res.json({
+    plan: { id: plan.id, name: plan.name, minDeposit: plan.min_deposit, maxDeposit: plan.max_deposit, dailyYieldPct: plan.daily_yield_pct, refBonusPct: plan.ref_bonus_pct },
+    user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid)),
+  });
 });
 
 // ---------- API: STATISTICHE FAKE (landing) ----------
@@ -322,8 +413,12 @@ app.post('/api/deposit', auth, (req, res) => {
   const amt = parseFloat(amount);
   if (!amt || amt <= 0) return res.status(400).json({ error: 'Importo invalido' });
 
-  // Piano dell'utente (usato per bonus referral, se presente un referrer)
-  let plan = db.prepare('SELECT * FROM plans WHERE id = ?').get((req.body && req.body.planId) || req.user.plan_id || 1);
+  // Piano scelto esplicitamente, altrimenti il piu' alto attivabile con questo importo
+  const chosen = findPlan(req.body && req.body.planId);
+  const plan = chosen || bestPlanForAmount(amt);
+  if (amt < plan.min_deposit) {
+    return res.status(400).json({ error: 'Importo minimo per ' + plan.name + ': €' + plan.min_deposit });
+  }
 
   // Inserisci deposito
   db.prepare(`
@@ -331,17 +426,19 @@ app.post('/api/deposit', auth, (req, res) => {
     VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
   `).run(req.uid, amt, plan.id);
 
-  // Aggiorna saldo utente
+  // Aggiorna saldo utente + piano attivo
   const newBalance = Math.round((req.user.balance + amt) * 100) / 100;
-  db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, req.uid);
+  db.prepare('UPDATE users SET balance = ?, plan_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, plan.id, req.uid);
 
-  // Se c'è un referrer, aggiorna il bonus
+  // Bonus al referrer: SOLO se l'invitato deposita davvero
+  let referrerBonus = 0;
   if (req.user.referred_by) {
     const referrer = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.referred_by);
     const bonus = Math.round(amt * (plan.ref_bonus_pct / 100) * 100) / 100;
+    referrerBonus = bonus;
     db.prepare('UPDATE users SET balance = balance + ?, total_ref_deposits = total_ref_deposits + ? WHERE id = ?').run(bonus, amt, req.user.referred_by);
     db.prepare('UPDATE referrals SET active = 1, referrer_bonus = referrer_bonus + ? WHERE referrer_id = ? AND referee_id = ?').run(bonus, req.user.referred_by, req.uid);
-    if (referrer.referred_by) {
+    if (referrer && referrer.referred_by) {
       const grandparentBonus = Math.round(bonus * 0.10 * 100) / 100;
       db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(grandparentBonus, referrer.referred_by);
     }
@@ -350,7 +447,7 @@ app.post('/api/deposit', auth, (req, res) => {
   res.status(201).json({
     message: 'Deposito confermato. Fondi in elaborazione.',
     user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid)),
-    deposit: { amount: amt, plan: plan.name, referrerBonus: req.user.referred_by ? Math.round(amt * (plan.ref_bonus_pct / 100) * 100) / 100 : 0 },
+    deposit: { amount: amt, plan: plan.name, referrerBonus: referrerBonus },
   });
 });
 
@@ -367,13 +464,17 @@ app.post('/api/withdraw', auth, (req, res) => {
   const isFast = amount <= CONFIG.WITHDRAW_FAST_LIMIT;
   const status = isFast ? 'completed' : 'pending';
   const fee = isFast ? 0 : Math.round(amount * CONFIG.WITHDRAW_FEE_PCT * 100) / 100;
-  
+
+  const balance = db.prepare('SELECT balance FROM users WHERE id = ?').get(req.uid).balance;
+  if (amount + fee > balance) return res.status(400).json({ error: 'Saldo insufficiente (fee inclusa)' });
+
   db.prepare(`
     INSERT INTO withdrawals (user_id, amount, fee, status, is_fast, created_at)
     VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
   `).run(req.uid, amount, fee, status, isFast ? 1 : 0);
-  
-  db.prepare('UPDATE users SET balance = balance - ? WHERE id = ?').run(amount + fee, req.uid);
+
+  const left = Math.round((balance - amount - fee) * 100) / 100;
+  db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(left, req.uid);
   
   res.status(201).json({
     message: isFast ? 'Prelievo istantaneo completato.' : 'Prelievo in elaborazione (KYC richiesto)',
@@ -451,40 +552,78 @@ function getInvitesRecursive(userId, level, db) {
 }
 
 // ---------- API: ADMIN (pannello di controllo) ----------
+// Accesso admin: account admin (email+password) OPPURE chiave admin
+app.post('/api/admin/login', (req, res) => {
+  const { email, password, key } = req.body || {};
+  if (key && key === CONFIG.ADMIN_KEY) return res.json({ ok: true, key: CONFIG.ADMIN_KEY, name: 'Admin', email: CONFIG.ADMIN_EMAIL });
+  if (!email || !password) return res.status(400).json({ error: 'Email e password richiesti' });
+
+  const user = db.prepare('SELECT * FROM users WHERE LOWER(email) = LOWER(?)').get(String(email).trim());
+  if (!user || hashPw(password) !== user.password_hash) return res.status(401).json({ error: 'Credenziali non valide' });
+  if (!user.is_admin) return res.status(403).json({ error: 'Questo account non e amministratore' });
+
+  const token = crypto.randomUUID();
+  const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  db.prepare('INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, token, expires);
+  res.json({ ok: true, token, name: user.username, email: user.email });
+});
+
 app.get('/api/admin/overview', adminAuth, (req, res) => {
   const totalUsers = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
   const totalDeposited = db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE confirmed = 1").get().s;
   const totalBalance = db.prepare('SELECT COALESCE(SUM(balance),0) AS s FROM users').get().s;
+  const inactiveUsers = db.prepare('SELECT COUNT(*) AS c FROM users u WHERE NOT EXISTS (SELECT 1 FROM deposits d WHERE d.user_id = u.id AND d.confirmed = 1)').get().c;
   const pendingWithdrawals = db.prepare(`
-    SELECT u.email, w.amount, w.fee, w.created_at AS date
+    SELECT w.id, u.email, w.amount, w.fee, w.created_at AS date
     FROM withdrawals w JOIN users u ON u.id = w.user_id
     WHERE w.status = 'pending' ORDER BY w.created_at DESC
   `).all();
-  res.json({ totalUsers, totalDeposited, totalBalance, pendingWithdrawals });
+  const recentWithdrawals = db.prepare(`
+    SELECT w.id, u.email, w.amount, w.fee, w.status, w.created_at AS date
+    FROM withdrawals w JOIN users u ON u.id = w.user_id
+    ORDER BY w.created_at DESC LIMIT 20
+  `).all();
+  res.json({ totalUsers, totalDeposited, totalBalance, inactiveUsers, pendingWithdrawals, recentWithdrawals });
 });
 
 app.get('/api/admin/users', adminAuth, (req, res) => {
-  const users = db.prepare('SELECT id, email, username AS name, balance, total_ref_deposits AS totalDeposited, plan_id, referral_code, referred_by FROM users ORDER BY id').all();
+  const users = db.prepare(`
+    SELECT u.id, u.email, u.username AS name, u.balance, u.plan_id, u.is_admin, u.referral_code, u.referred_by, u.created_at,
+      p.name AS plan,
+      (SELECT COALESCE(SUM(amount),0) FROM deposits d WHERE d.user_id = u.id AND d.confirmed = 1) AS deposited,
+      (SELECT COUNT(*) FROM users x WHERE x.referred_by = u.id) AS invites,
+      (SELECT COUNT(*) FROM referrals r WHERE r.referrer_id = u.id) AS refCount,
+      (SELECT COALESCE(SUM(referrer_bonus),0) FROM referrals r WHERE r.referrer_id = u.id) AS refEarned
+    FROM users u LEFT JOIN plans p ON p.id = u.plan_id
+    ORDER BY u.id
+  `).all();
   res.json({ users });
 });
 
 app.post('/api/admin/set-balance', adminAuth, (req, res) => {
   const { id, balance } = req.body;
+  const uid = parseInt(id, 10);
   const b = parseFloat(balance);
-  if (!id || isNaN(b) || b < 0) return res.status(400).json({ error: 'id o balance non validi' });
-  const u = db.prepare('SELECT id FROM users WHERE id = ?').get(id);
+  if (!uid || isNaN(b) || b < 0) return res.status(400).json({ error: 'id o saldo non validi' });
+  const u = db.prepare('SELECT id FROM users WHERE id = ?').get(uid);
   if (!u) return res.status(404).json({ error: 'Utente non trovato' });
-  db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(b, id);
-  res.json({ ok: true, user: { id, balance: b } });
+  db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(b, uid);
+  res.json({ ok: true, user: { id: uid, balance: b } });
 });
 
 app.post('/api/admin/resolve-withdrawal', adminAuth, (req, res) => {
-  const { email, date, status } = req.body;
-  if (!email || !date || !['pagato', 'respinto'].includes(status)) return res.status(400).json({ error: 'Parametri non validi' });
-  const u = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-  if (!u) return res.status(404).json({ error: 'Utente non trovato' });
-  const w = db.prepare("SELECT id FROM withdrawals WHERE user_id = ? AND created_at = ? AND status = 'pending'").get(u.id, date);
-  if (!w) return res.status(404).json({ error: 'Prelievo non trovato o già risolto' });
+  const { id, email, date, status } = req.body;
+  if (!['pagato', 'respinto'].includes(status)) return res.status(400).json({ error: 'Parametri non validi' });
+
+  let w = null;
+  if (id) w = db.prepare("SELECT id FROM withdrawals WHERE id = ? AND status = 'pending'").get(parseInt(id, 10));
+  if (!w && email && date) {
+    const u = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    if (!u) return res.status(404).json({ error: 'Utente non trovato' });
+    w = db.prepare("SELECT id FROM withdrawals WHERE user_id = ? AND created_at = ? AND status = 'pending'").get(u.id, date);
+  }
+  if (!w) return res.status(404).json({ error: 'Prelievo non trovato o gia risolto' });
+
   db.prepare('UPDATE withdrawals SET status = ? WHERE id = ?').run(status === 'pagato' ? 'completed' : 'rejected', w.id);
   res.json({ ok: true, status: status === 'pagato' ? 'Pagato' : 'Respinto (KYC)' });
 });
@@ -492,12 +631,10 @@ app.post('/api/admin/resolve-withdrawal', adminAuth, (req, res) => {
 // ---------- START SERVER ----------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('🚀 QuantX AI server attivo su http://localhost:' + PORT);
-  console.log('🎄 ALBERO DI NATALE FORZATO!');
-  console.log('   - Ogni utente DEVE invitare altri per crescere');
-  console.log('   - Se gli invitati non depositano, il referrer prende 0');
+  console.log('QuantX AI server attivo su http://localhost:' + PORT);
+  console.log('   - Piani: 3% / 4.5% / 6% / 8% al giorno');
   console.log('   - Bonus referral: 10-17% (solo se gli invitati depositano)');
-  console.log('   - Yield giornaliero: 3-8%');
+  console.log('   - Prelievi: istantanei fino a EUR 30, sopra serve verifica');
   console.log('   - Admin key: ' + CONFIG.ADMIN_KEY);
 });
 
