@@ -1,29 +1,37 @@
-// QuantX AI - Frontend dashboard: autenticazione, giocate, grafico finto
+// QuantX AI - Dashboard: dati reali dal backend
 const API = '';
 const TOKEN_KEY = 'quantx_token';
 const REF_KEY = 'quantx_ref';
-let token = localStorage.getItem(TOKEN_KEY);
 
-// Codice invito dal link (?ref=XXX): lo memorizzo cosi resta anche cambiando pagina
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => (Number(n || 0) < 0 ? '-' : '') + '€' + Math.abs(Number(n || 0)).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt0 = (n) => (Number(n || 0) < 0 ? '-' : '') + '€' + Math.abs(Number(n || 0)).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+const dt = (s) => new Date(String(s).replace(' ', 'T') + 'Z').toLocaleString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+let token = localStorage.getItem(TOKEN_KEY);
 const urlParams = new URLSearchParams(location.search);
 const urlRef = (urlParams.get('ref') || '').toUpperCase().trim();
 if (urlRef) localStorage.setItem(REF_KEY, urlRef);
 let registerMode = urlParams.get('mode') === 'register' || !!urlRef;
+let currentBalance = 0;
 
-// ---------- HELPERS ----------
-const $ = (id) => document.getElementById(id);
-const fmt = (n) => '€' + n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const toast = (msg) => { const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); };
+function toast(msg, kind) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (kind ? ' ' + kind : '');
+  setTimeout(() => t.classList.remove('show'), 3400);
+}
 
 async function api(path, opts = {}) {
   const res = await fetch(API + path, {
     ...opts,
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
   });
-  return res.json();
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { localStorage.removeItem(TOKEN_KEY); token = null; }
+  return data;
 }
 
-// Feedback sui pulsanti: mentre lavorano si vedono "occupati" (niente piu' click a vuoto)
 async function withBtn(btn, label, fn) {
   if (btn) {
     btn.dataset.old = btn.textContent;
@@ -31,9 +39,8 @@ async function withBtn(btn, label, fn) {
     btn.classList.add('loading');
     btn.textContent = label;
   }
-  try {
-    return await fn();
-  } finally {
+  try { return await fn(); }
+  finally {
     if (btn) {
       btn.disabled = false;
       btn.classList.remove('loading');
@@ -44,115 +51,68 @@ async function withBtn(btn, label, fn) {
 
 function animateBalance(el, target) {
   if (!el) return;
-  const from = parseFloat(String(el.textContent).replace(/[^0-9.]/g, '')) || 0;
+  el.textContent = fmt(target);   // valore subito (rAF puo' non girare in tab nascosta)
+  if (typeof document !== 'undefined' && document.hidden) return;
+  const from = 0;
   const start = performance.now();
   const tick = (now) => {
     const t = Math.min(1, (now - start) / 700);
-    const eased = 1 - Math.pow(1 - t, 3);
-    el.textContent = fmt(from + (target - from) * eased);
+    el.textContent = fmt(from + (target - from) * (1 - Math.pow(1 - t, 3)));
     if (t < 1) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
 }
 
-// ---------- AUTH ----------
+// ---------- ACCESSO ----------
 function applyAuthMode(reg) {
   registerMode = reg;
   $('reg-name-wrap').style.display = reg ? 'block' : 'none';
   $('reg-ref-wrap').style.display = reg ? 'block' : 'none';
-  $('auth-title').textContent = reg ? 'Crea il tuo account' : 'Accedi al pannello';
-  $('auth-btn').textContent = reg ? 'Registrati ⚡' : 'Entra ⚡';
-  $('auth-switch').textContent = reg ? 'Hai già un account? ' : 'Non hai un account? ';
-  $('auth-switch').nextElementSibling.textContent = reg ? 'Accedi' : 'Registrati';
+  $('auth-title').textContent = reg ? 'Apri il tuo account' : 'Accedi al pannello';
+  $('auth-sub').textContent = reg
+    ? 'Trenta secondi e sei dentro. Il codice invito viene letto dal link.'
+    : 'Gestisci piano, segnali e prelievi da un unico posto.';
+  $('auth-btn').textContent = reg ? 'Crea account' : 'Accedi';
+  $('auth-switch').textContent = reg ? 'Hai gia un account?' : 'Non hai un account?';
+  $('auth-switch').nextElementSibling.textContent = reg ? 'Accedi' : 'Apri un account';
   if (reg && !$('auth-ref').value) $('auth-ref').value = localStorage.getItem(REF_KEY) || '';
 }
 
 function toggleAuth() { applyAuthMode(!registerMode); }
 
-async function doAuth() {
+async function doAuth(btn) {
   const refCode = ($('auth-ref').value || localStorage.getItem(REF_KEY) || '').toUpperCase().trim();
-  const payload = { email: $('auth-email').value, password: $('auth-pass').value, name: $('auth-name').value, ref: refCode };
-  const data = await api(registerMode ? '/api/register' : '/api/login', { method: 'POST', body: JSON.stringify(payload) });
-  if (data.error) return $('auth-error').textContent = data.error;
+  const payload = { email: $('auth-email').value.trim(), password: $('auth-pass').value, name: $('auth-name').value.trim(), ref: refCode };
+  const data = await withBtn(btn, 'Verifica in corso...', () =>
+    api(registerMode ? '/api/register' : '/api/login', { method: 'POST', body: JSON.stringify(payload) })
+  );
+  if (data.error) { $('auth-error').textContent = data.error; return; }
   token = data.token;
   localStorage.setItem(TOKEN_KEY, token);
+  $('auth-error').textContent = '';
   enterDash();
 }
 
+// ---------- DASHBOARD ----------
 async function enterDash() {
-  const data = await api('/api/me');
-  if (data.error) return location.href = 'app.html';
+  const me = await api('/api/me');
+  if (me.error) { localStorage.removeItem(TOKEN_KEY); token = null; return; }
   $('auth-view').style.display = 'none';
   $('dash-view').style.display = 'block';
-  renderUser(data);
-  renderSignals(data);
+  currentBalance = me.user.balance;
+
+  animateBalance($('balance'), me.user.balance);
+  $('balance-sub').textContent = 'Piano ' + (me.user.planName || 'Starter') + ' · rendimento ' + String((me.user.planYieldPct || 0)).replace('.', ',') + '% al giorno';
+  $('plan-badge').textContent = me.user.planName || 'Starter';
+  $('kpi-deposited').textContent = fmt0(me.user.totalDeposited);
+
+  if (me.user.isAdmin) addAdminLink();
+  renderSignals(me.today || []);
+  loadPortfolio();
+  loadTransactions();
   loadReferrals();
-  loadMyActivity();
-  loadWithdrawalsList();
+  loadWithdrawals();
   startFeed();
-  drawChart();
-}
-
-// Le mie ultime operazioni
-async function loadMyActivity() {
-  const data = await api('/api/my-activity');
-  const box = $('my-activity');
-  if (!box) return;
-  const items = (data && data.items) || [];
-  box.innerHTML = items.length ? items.map(it => `
-    <div class="activity-item">
-      <span class="ic">${it.type === 'deposit' ? '💰' : it.type === 'withdraw' ? '🏦' : '📈'}</span>
-      <span class="tx">${it.text}<div class="when">${new Date(String(it.date).replace(' ', 'T') + 'Z').toLocaleString('it-IT')}</div></span>
-      <span class="${it.amount >= 0 ? 'pos' : 'neg'}">${it.amount >= 0 ? '+' : ''}${fmt(it.amount)}</span>
-    </div>`).join('') : '<p style="color:var(--muted)">Nessuna operazione. Inizia con un deposito.</p>';
-}
-
-// Storico prelievi
-async function loadWithdrawalsList() {
-  const data = await api('/api/withdrawals');
-  const box = $('withdrawals-list');
-  if (!box) return;
-  const list = (data && data.withdrawals) || [];
-  box.innerHTML = list.length ? list.map(w => `
-    <div class="activity-item">
-      <span class="ic">🏦</span>
-      <span class="tx">Prelievo
-        <div class="when">${w.status === 'completed' ? 'Pagato' : w.status === 'rejected' ? 'Respinto' : 'In verifica'} · ${new Date(String(w.date).replace(' ', 'T') + 'Z').toLocaleString('it-IT')}</div>
-      </span>
-      <span class="neg">-${fmt(w.amount)}</span>
-    </div>`).join('') : '<p style="color:var(--muted)">Nessun prelievo richiesto.</p>';
-}
-
-// ---------- FIDELTÀ: codice referral + link invito ----------
-async function loadReferrals() {
-  const data = await api('/api/referrals');
-  if (data.error) return;
-  const link = location.origin + '/app.html?ref=' + data.code;
-  $('ref-link').textContent = link;
-  $('ref-stats').textContent = `${data.count} amici · ${data.activeCount} attivi · +${fmt(data.earned)}`;
-}
-function copyRef() {
-  const txt = $('ref-link').textContent;
-  if (navigator.clipboard) navigator.clipboard.writeText(txt);
-  else { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
-  toast('🔗 Link copiato. Condividilo e guadagna!');
-}
-
-function shareRef(channel) {
-  const link = $('ref-link').textContent;
-  const msg = encodeURIComponent('Ti passo QuantX AI: rendita automatica ogni giorno. Registrati con il mio link: ' + link);
-  if (channel === 'wa') window.open('https://wa.me/?text=' + msg, '_blank');
-  else if (channel === 'tg') window.open('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + msg, '_blank');
-  else copyRef();
-}
-
-function renderUser(data) {
-  const u = data.user;
-  animateBalance($('balance'), u.balance);
-  $('streak').textContent = u.streak;
-  $('balance-sub').textContent = 'Piano ' + (u.planName || 'Starter') + ' · rendita automatica attiva';
-  // Il pulsante Admin esiste SOLO per l'amministratore (per gli altri non viene nemmeno creato)
-  if (u.isAdmin) addAdminLink();
 }
 
 function addAdminLink() {
@@ -162,119 +122,230 @@ function addAdminLink() {
   a.id = 'nav-admin';
   a.href = 'admin.html';
   a.className = 'btn btn-ghost';
-  a.style.textDecoration = 'none';
-  a.textContent = 'Admin';
+  a.textContent = 'Console';
   box.insertBefore(a, box.firstChild);
 }
 
-// ---------- GIOCATE (3 segnali/giorno ad orari precisi) ----------
-async function renderSignals(data) {
-  const sig = data.signals;
-  const labels = ['Segnale Alpha', 'Segnale Beta', 'Segnale Gamma'];
-  const conf = ['96.2%', '94.8%', '92.1%'];
-  const hours = [9, 14, 20]; // ore in cui i segnali sono disponibili
-  const currentHour = new Date().getHours();
-  
-  $('signal-count').textContent = `${sig.claimed.length}/3 attivati`;
-  $('signals').innerHTML = labels.map((lab, i) => {
-    const claimed = sig.claimed.includes(i);
-    const idx = sig.claimed.indexOf(i);
-    const gained = idx >= 0 ? (sig.profits[idx] || 0) : 0;
-    const isAvailable = currentHour === hours[i];
-    const canClaim = !claimed && isAvailable;
-    
-    return `<div class="signal ${claimed ? 'active' : ''}">
-      <div class="info">
-        <h4>${lab}</h4>
-        <div class="meta">Confidenza ${conf[i]} · Disponibile alle ore ${hours[i]}:00 · ${claimed ? '<span class="win">' + (gained >= 0 ? '+' : '') + fmt(gained) + (gained >= 0 ? ' guadagnato' : ' perso') + '</span>' : isAvailable ? 'Disponibile ora' : 'In attesa...'}</div>
-      </div>
-      <button class="btn ${claimed ? 'btn-ghost' : 'btn-green'}" ${claimed || !isAvailable ? 'disabled' : ''} onclick="claimSignal(${i}, this)">
-        ${claimed ? '✓ Attivato' : isAvailable ? 'Attiva trade' : 'In attesa...'}
-      </button>
-    </div>`;
+// ---------- PORTFOLIO (curva reale) ----------
+function drawChart(series) {
+  const box = $('chart');
+  if (!box) return;
+  if (!series || series.length < 2) {
+    box.innerHTML = '<div class="empty"><strong>Nessun movimento ancora</strong>La curva del saldo appare dopo il primo deposito.</div>';
+    return;
+  }
+  const W = 640, H = 240, pad = { l: 10, r: 10, t: 14, b: 26 };
+  const vals = series.map(s => s.v);
+  const min = Math.min(0, ...vals);
+  const max = Math.max(...vals, 1);
+  const toX = (i) => pad.l + (i / (series.length - 1)) * (W - pad.l - pad.r);
+  const toY = (v) => pad.t + (1 - (v - min) / (max - min || 1)) * (H - pad.t - pad.b);
+
+  const line = series.map((s, i) => (i === 0 ? 'M' : 'L') + toX(i).toFixed(1) + ',' + toY(s.v).toFixed(1)).join(' ');
+  const area = line + ' L' + toX(series.length - 1).toFixed(1) + ',' + (H - pad.b) + ' L' + toX(0).toFixed(1) + ',' + (H - pad.b) + ' Z';
+  const grid = [0, 0.25, 0.5, 0.75, 1].map(f => {
+    const y = pad.t + f * (H - pad.t - pad.b);
+    const v = max - f * (max - min);
+    return '<line x1="' + pad.l + '" y1="' + y.toFixed(1) + '" x2="' + (W - pad.r) + '" y2="' + y.toFixed(1) + '"/>' +
+           '<text class="chart-axis" x="' + pad.l + '" y="' + (y - 5).toFixed(1) + '">' + fmt0(v) + '</text>';
+  }).join('');
+
+  box.innerHTML = '<svg class="chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
+    '<defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0%" stop-color="#4C8DFF" stop-opacity="0.3"/>' +
+      '<stop offset="100%" stop-color="#4C8DFF" stop-opacity="0"/></linearGradient></defs>' +
+    '<g class="chart-grid">' + grid + '</g>' +
+    '<path class="chart-area" d="' + area + '"/><path class="chart-line" d="' + line + '"/></svg>';
+}
+
+async function loadPortfolio() {
+  const p = await api('/api/portfolio');
+  if (p.error) return;
+  drawChart(p.series);
+  $('kpi-net').textContent = (p.netProfit >= 0 ? '+' : '') + fmt0(p.netProfit);
+  $('kpi-net-sub').textContent = fmt0(p.deposited) + ' depositati · ' + fmt0(p.withdrawn) + ' prelievati';
+  $('balance-sub').textContent = 'Piano ' + p.plan.name + ' · rendimento ' + String(p.plan.dailyYieldPct).replace('.', ',') + '% al giorno';
+  $('plan-badge').textContent = p.plan.name;
+  $('wd-hint').textContent = 'Il saldo disponibile: ' + fmt(currentBalance);
+}
+
+// ---------- SEGNALI ----------
+function renderSignals(list) {
+  if (!list || !list.length) {
+    $('signals').innerHTML = '<div class="empty">Nessun segnale disponibile.</div>';
+    return;
+  }
+  $('signal-count').textContent = list.filter(s => s.claimed).length + '/3 attivati';
+  $('signals').innerHTML = list.map(s => {
+    const cls = s.state === 'closed' ? 'closed' : '';
+    let action, meta, badge;
+    if (s.claimed) {
+      const up = s.profit >= 0;
+      action = '<span class="badge ' + (up ? 'success' : 'danger') + '">' + (up ? '+' : '') + fmt(s.profit) + '</span>';
+      meta = (up ? 'Take profit raggiunto' : 'Stop loss colpito') + ' · chiuso';
+      badge = 'Chiuso';
+    } else if (s.state === 'available') {
+      action = '<button class="btn btn-primary btn-sm" onclick="claimSignal(' + s.index + ', this)">Attiva</button>';
+      meta = 'Disponibile ora';
+      badge = 'Aperto';
+    } else {
+      action = '<span class="badge">Programmato</span>';
+      meta = 'Apre alle ' + String(s.hour).padStart(2, '0') + ':00';
+      badge = 'In attesa';
+    }
+    return '<div class="signal ' + cls + '">' +
+      '<div class="info">' +
+        '<h4>' + s.name + ' · ' + s.pair + ' <span class="badge ' + (s.direction === 'LONG' ? 'success' : 'danger') + '">' + s.direction + '</span></h4>' +
+        '<div class="meta">Confidenza ' + s.confidence.toFixed(1) + '% · ' + meta + '</div>' +
+      '</div>' +
+      '<div class="values">' +
+        '<div>Ingresso<b>' + s.entry.toFixed(4) + '</b></div>' +
+        '<div>Take profit<b>' + s.tp.toFixed(4) + '</b></div>' +
+        '<div>Stop loss<b>' + s.sl.toFixed(4) + '</b></div>' +
+      '</div>' +
+      '<div style="text-align:right">' + badge + '<div style="margin-top:6px">' + action + '</div></div>' +
+    '</div>';
   }).join('');
 }
 
 async function claimSignal(i, btn) {
-  const data = await withBtn(btn, '⏳ Trade in corso...', async () => {
-    await new Promise(r => setTimeout(r, 1200));
-    return api('/api/claim-signal', { method: 'POST', body: JSON.stringify({ index: i }) });
-  });
-  if (data.error) {
-    toast(data.error + (data.message ? ' - ' + data.message : ''));
+  const data = await withBtn(btn, 'Esecuzione...', () =>
+    api('/api/claim-signal', { method: 'POST', body: JSON.stringify({ index: i }) })
+  );
+  if (data.error) { toast(data.error + (data.message ? ' — ' + data.message : ''), 'err'); return; }
+  toast((data.profit >= 0 ? 'Trade chiuso in profitto: +' : 'Trade chiuso in perdita: ') + fmt(data.profit), data.profit >= 0 ? 'ok' : 'err');
+  currentBalance = data.user.balance;
+  animateBalance($('balance'), data.user.balance);
+  const me = await api('/api/me');
+  renderSignals(me.today || []);
+  loadPortfolio();
+  loadTransactions();
+}
+
+// ---------- MOVIMENTI ----------
+async function loadTransactions() {
+  const d = await api('/api/transactions');
+  const body = $('tx-body');
+  if (!body) return;
+  const list = d.transactions || [];
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="4"><div class="empty"><strong>Nessun movimento</strong>Qui vedrai depositi, segnali e prelievi.</div></td></tr>';
     return;
   }
-  toast((data.profit >= 0 ? '⚡ Trade chiuso: +' : '⚠️ Trade chiuso: ') + fmt(data.profit));
-  animateBalance($('balance'), data.user.balance);
-  renderSignals(data);
-  loadMyActivity();
+  body.innerHTML = list.map(t => {
+    const up = t.amount >= 0;
+    return '<tr>' +
+      '<td>' + t.label + (t.meta ? '<div class="muted" style="font-size:12px">' + t.meta + '</div>' : '') + '</td>' +
+      '<td class="muted nowrap">' + dt(t.date) + '</td>' +
+      '<td class="right ' + (up ? 'pos' : 'neg') + '">' + (up ? '+' : '') + fmt(t.amount) + '</td>' +
+      '<td class="right num muted">' + fmt(t.balanceAfter) + '</td>' +
+    '</tr>';
+  }).join('');
 }
 
-// ---------- FEED FAKE (segnali in tempo reale) ----------
+// ---------- REFERRAL ----------
+async function loadReferrals() {
+  const d = await api('/api/referrals');
+  if (d.error) return;
+  $('ref-link').textContent = location.origin + '/app.html?ref=' + d.code;
+  $('ref-stats').textContent = d.count + ' inviti · ' + d.activeCount + ' attivi';
+  $('kpi-ref').textContent = fmt0(d.earned);
+  $('kpi-ref-sub').textContent = d.count + ' inviti, ' + d.activeCount + ' con piano attivo';
+}
+
+function copyRef() {
+  const txt = $('ref-link').textContent;
+  if (navigator.clipboard) navigator.clipboard.writeText(txt);
+  else { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+  toast('Link copiato', 'ok');
+}
+
+function shareRef(channel) {
+  const link = $('ref-link').textContent;
+  const msg = 'Provo QuantX AI, piattaforma di trading quantitativo con segnali automatici. Entra pure: ' + link;
+  if (channel === 'wa') window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+  else if (channel === 'tg') window.open('https://t.me/share/url?url=' + encodeURIComponent(link) + '&text=' + encodeURIComponent(msg), '_blank');
+  else copyRef();
+}
+
+// ---------- PRELIEVI ----------
+async function loadWithdrawals() {
+  const d = await api('/api/withdrawals');
+  const box = $('withdrawals-list');
+  if (!box) return;
+  const list = d.withdrawals || [];
+  if (!list.length) {
+    box.innerHTML = '<div class="empty">Nessun prelievo richiesto.</div>';
+    return;
+  }
+  box.innerHTML = list.map(w => {
+    const label = w.status === 'completed' ? 'Pagato' : w.status === 'rejected' ? 'Respinto' : 'In verifica';
+    const cls = w.status === 'completed' ? 'success' : w.status === 'rejected' ? 'danger' : 'warning';
+    return '<div class="activity-item">' +
+      '<div class="tx">' + label + '<div class="when">' + dt(w.date) + (w.fee ? ' · fee ' + fmt(w.fee) : '') + '</div></div>' +
+      '<span class="neg">' + fmt(w.amount) + '</span>' +
+      '<span class="badge ' + cls + '">' + label + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+// ---------- MERCATO (feed) ----------
 const PAIRS = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'ADA/USDT', 'DOGE/USDT', 'AVAX/USDT'];
 function startFeed() {
+  const feed = $('feed');
+  if (!feed) return;
   const push = () => {
     const pair = PAIRS[Math.floor(Math.random() * PAIRS.length)];
-    const win = Math.random() > 0.2; // 80% vincite
-    const pct = (Math.random() * 2.5 + 0.3).toFixed(2);
+    const up = Math.random() > 0.42;
+    const pct = (Math.random() * 1.8 + 0.15).toFixed(2);
     const item = document.createElement('div');
     item.className = 'feed-item';
-    item.innerHTML = `<span><span class="pair">${pair}</span> ${win ? 'LONG' : 'SHORT'}</span>
-      <span class="${win ? 'up' : 'down'}">${win ? '+' : '-'}${pct}% ${win ? 'WIN' : 'LOSS'}</span>`;
-    const feed = $('feed');
+    item.innerHTML = '<span><span class="pair">' + pair + '</span> <span class="dir ' + (up ? 'up' : 'down') + '">' + (up ? 'LONG' : 'SHORT') + '</span></span>' +
+                     '<span class="' + (up ? 'up' : 'down') + '">' + (up ? '+' : '-') + pct + '%</span>';
     feed.prepend(item);
-    if (feed.children.length > 8) feed.lastChild.remove();
+    while (feed.children.length > 9) feed.lastChild.remove();
   };
-  push(); push(); push();
-  setInterval(push, 3500);
+  for (let i = 0; i < 5; i++) push();
+  setInterval(push, 5000);
 }
 
-// ---------- GRAPICO FINTO (random walk verso l'alto) ----------
-function drawChart() {
-  let v = 40;
-  const pts = [];
-  for (let i = 0; i < 40; i++) { v += Math.random() * 4 - 1.2; pts.push(v); }
-  const min = Math.min(...pts), max = Math.max(...pts);
-  const toY = (p) => 210 - ((p - min) / (max - min)) * 200;
-  const toX = (i) => (i / (pts.length - 1)) * 600;
-  const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${toX(i).toFixed(1)},${toY(p).toFixed(1)}`).join(' ');
-  $('chart-line').setAttribute('d', line);
-  $('chart-area').setAttribute('d', line + ` L600,220 L0,220 Z`);
-}
-
-// ---------- DEPOSIT / WITHDRAW ----------
-function openModal(id) { $( 'modal-' + id).classList.add('show'); }
+// ---------- DEPOSITO / PRELIEVO ----------
+function openModal(id) { $('modal-' + id).classList.add('show'); }
 function closeModal(id) { $('modal-' + id).classList.remove('show'); }
 
 async function doDeposit(btn) {
   const amount = $('dep-amount').value;
-  if (!amount || Number(amount) <= 0) return toast('Inserisci un importo valido');
-  const data = await withBtn(btn, '⏳ Verifica pagamento...', async () => {
-    await new Promise(r => setTimeout(r, 900));   // come la conferma di un pagamento vero
+  if (!amount || Number(amount) < 10) return toast('Importo minimo 10 euro', 'err');
+  const data = await withBtn(btn, 'Verifica pagamento...', async () => {
+    await new Promise(r => setTimeout(r, 900));
     return api('/api/deposit', { method: 'POST', body: JSON.stringify({ amount }) });
   });
-  if (data.error) return toast(data.error);
+  if (data.error) return toast(data.error, 'err');
   closeModal('deposit');
   $('dep-amount').value = '';
-  toast('✅ Deposito di ' + fmt(amount) + ' confermato · piano ' + (data.deposit ? data.deposit.plan : 'attivo'));
-  if (data.user) animateBalance($('balance'), data.user.balance);
-  loadMyActivity();
+  toast('Deposito di ' + fmt0(amount) + ' registrato sul piano ' + (data.deposit ? data.deposit.plan : ''), 'ok');
+  currentBalance = data.user.balance;
+  animateBalance($('balance'), data.user.balance);
+  loadPortfolio();
+  loadTransactions();
 }
 
 async function doWithdraw(btn) {
   const amount = $('wd-amount').value;
-  if (!amount || Number(amount) <= 0) return toast('Inserisci un importo valido');
-  const data = await withBtn(btn, '⏳ Invio richiesta...', async () => {
+  if (!amount || Number(amount) < 50) return toast('Prelievo minimo 50 euro', 'err');
+  const data = await withBtn(btn, 'Invio richiesta...', async () => {
     await new Promise(r => setTimeout(r, 900));
     return api('/api/withdraw', { method: 'POST', body: JSON.stringify({ amount }) });
   });
-  if (data.error) return toast(data.error);
+  if (data.error) return toast(data.error, 'err');
   closeModal('withdraw');
   $('wd-amount').value = '';
-  toast((data.withdrawal.status === 'approvato' ? '✅ ' : '⏳ ') + data.withdrawal.msg);
-  if (data.user) animateBalance($('balance'), data.user.balance);
-  loadMyActivity();
-  loadWithdrawalsList();
+  toast(data.withdrawal.msg, 'ok');
+  currentBalance = data.user.balance;
+  animateBalance($('balance'), data.user.balance);
+  loadPortfolio();
+  loadTransactions();
+  loadWithdrawals();
 }
 
 function logout() { localStorage.removeItem(TOKEN_KEY); location.href = 'index.html'; }
@@ -283,10 +354,9 @@ function logout() { localStorage.removeItem(TOKEN_KEY); location.href = 'index.h
 window.addEventListener('DOMContentLoaded', () => {
   const savedRef = localStorage.getItem(REF_KEY);
   if (savedRef) $('auth-ref').value = savedRef;
-
   if (!token) {
     $('auth-view').style.display = 'flex';
-    applyAuthMode(registerMode);   // mostra subito "registrati" se c'è ?ref= o ?mode=register
+    applyAuthMode(registerMode);
   } else {
     enterDash();
   }

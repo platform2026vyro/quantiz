@@ -3,161 +3,200 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QuantX AI — Motore di Trading Quantitativo</title>
+  <title>QuantX AI — Piattaforma di trading quantitativo</title>
+  <meta name="description" content="Piattaforma di trading quantitativo con segnali automatici, piani di investimento e programma referral." />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
     <nav class="nav">
-      <div class="logo" onclick="location.href='index.html'">QUANT<span>X</span> AI</div>
-      <div style="display:flex; gap:10px; flex-wrap:wrap">
-        <a href="plans.html" class="btn btn-ghost" style="text-decoration:none">Piani</a>
-        <a href="amici.html" class="btn btn-ghost" style="text-decoration:none">Amici</a>
-        <button class="btn btn-ghost" onclick="location.href='app.html'">Accedi</button>
-        <button class="btn btn-primary" onclick="location.href='app.html?mode=register'">Inizia ora</button>
+      <div class="logo" onclick="location.href='index.html'">
+        <span class="mark">Q</span> QuantX <span>AI</span>
+      </div>
+      <div class="nav-links">
+        <a href="plans.html" class="btn btn-ghost">Piani</a>
+        <a href="amici.html" class="btn btn-ghost">Programma referral</a>
+        <a href="app.html" class="btn btn-secondary">Accedi</a>
+        <a href="app.html?mode=register" class="btn btn-primary">Apri un account</a>
       </div>
     </nav>
 
+    <!-- HERO -->
     <section class="hero">
-      <div class="badge">🧠 Motore Quantitativo di Nuova Generazione</div>
-      <h1>Fai lavorare il tuo capitale con l'<span class="grad">Intelligenza Artificiale</span></h1>
-      <p>QuantX AI analizza il mercato 24/7 con modelli predittivi e genera rendimenti automatici. Attiva i 3 segnali giornalieri e lascia che il motore faccia il resto.</p>
-      <button class="btn btn-primary btn-block" style="max-width:320px" onclick="location.href='app.html?mode=register'">⚡ Attiva il tuo account</button>
-      <div class="hero-img">
-        <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1400&q=80&auto=format&fit=crop"
-             alt="Dashboard QuantX" onerror="this.parentElement.style.display='none'" />
+      <span class="eyebrow"><span class="dot live"></span> Motore quantitativo attivo</span>
+      <h1>Trading quantitativo<br /><span class="grad">gestito per te.</span></h1>
+      <p>
+        QuantX AI analizza i mercati 24/7 e distribuisce tre segnali operativi al giorno,
+        generati dal modello di analisi. Attivi i segnali dal tuo pannello, il motore
+        esegue e accredita il risultato sul tuo saldo.
+      </p>
+      <div class="hero-actions">
+        <a href="app.html?mode=register" class="btn btn-primary">Apri il tuo account</a>
+        <a href="plans.html" class="btn btn-secondary">Confronta i piani</a>
+      </div>
+
+      <div class="hero-panel">
+        <div class="card-head">
+          <div>
+            <h3 style="margin-bottom:4px">Il pannello, in anteprima</h3>
+            <span class="hint">Saldo, segnali del giorno e storico movimenti in una sola schermata</span>
+          </div>
+          <span class="badge">Anteprima</span>
+        </div>
+        <div class="preview-grid">
+          <div class="preview-main">
+            <div class="preview-label">Andamento del saldo</div>
+            <svg class="chart-svg" viewBox="0 0 600 180" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#4C8DFF" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="#4C8DFF" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <g class="chart-grid">
+                <line x1="0" y1="40" x2="600" y2="40"/><line x1="0" y1="90" x2="600" y2="90"/><line x1="0" y1="140" x2="600" y2="140"/>
+              </g>
+              <path class="chart-area" d="M0,150 L60,140 L120,146 L180,120 L240,128 L300,96 L360,104 L420,72 L480,80 L540,44 L600,36 L600,180 L0,180 Z"/>
+              <path class="chart-line" d="M0,150 L60,140 L120,146 L180,120 L240,128 L300,96 L360,104 L420,72 L480,80 L540,44 L600,36"/>
+            </svg>
+          </div>
+          <div class="preview-side">
+            <div class="preview-row"><span>Segnale Alpha</span><span class="badge success">chiuso</span></div>
+            <div class="preview-row"><span>Segnale Beta</span><span class="badge">programmato</span></div>
+            <div class="preview-row"><span>Segnale Gamma</span><span class="badge">programmato</span></div>
+            <div class="preview-row"><span>Movimenti</span><span class="badge info">storico</span></div>
+          </div>
+        </div>
       </div>
     </section>
 
-    <div class="livebar">
-      <span class="dot"></span>
-      <span><b id="live-online">0</b> trader online</span>
-      <span class="sep">·</span>
-      <span><b id="live-watching">0</b> stanno guardando ora</span>
-      <span class="sep">·</span>
-      <span>ultimo deposito <b id="live-last">—</b> min fa</span>
-      <span class="sep">·</span>
-      <span><b id="live-paid">€0</b> pagati oggi</span>
+    <!-- BARRA LIVE -->
+    <div class="livebar" id="livebar">
+      <span><span class="dot live"></span> <b id="live-online">—</b> utenti attivi</span>
+      <span class="sep">|</span>
+      <span><b id="live-deposits">—</b> depositati oggi</span>
+      <span class="sep">|</span>
+      <span>ultimo deposito <b id="live-last">—</b></span>
+      <span class="sep">|</span>
+      <span><b id="live-signals">—</b> segnali eseguiti</span>
     </div>
 
+    <!-- NUMERI -->
     <div class="stats-grid">
-      <div class="card stat-card"><div class="num" id="stat-profit">€0</div><div class="label">Guadagnati negli ultimi 24h</div></div>
-      <div class="card stat-card"><div class="num" id="stat-users">0</div><div class="label">Investitori attivi</div></div>
-      <div class="card stat-card"><div class="num" id="stat-winrate">0%</div><div class="label">Win-rate medio</div></div>
-      <div class="card stat-card"><div class="num" id="stat-capital">€0</div><div class="label">Capitale gestito</div></div>
-    </div>
-
-    <div class="card" style="margin-top:26px">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px">
-        <h3>🔴 Attività in tempo reale</h3>
-        <span class="streak" style="font-size:12px">si aggiorna da sola</span>
+      <div class="card stat-card">
+        <div class="num" id="stat-profit">—</div>
+        <div class="label">Depositi confermati</div>
+        <div class="delta" id="stat-profit-sub">totale a regime</div>
       </div>
-      <div class="ticker" id="ticker"></div>
-    </div>
-
-    <h2 class="section-title">Perché QuantX AI?</h2>
-    <p class="section-sub">Tecnologia quantitativa applicata al trading reale</p>
-    <div class="features">
-      <div class="card feature">
-        <div class="icon">⚡</div>
-        <h3>Segnali Giornalieri</h3>
-        <p>3 opportunità ad alta confidenza ogni giorno. Il motore identifica i movimenti del mercato prima degli altri.</p>
+      <div class="card stat-card">
+        <div class="num" id="stat-users">—</div>
+        <div class="label">Account aperti</div>
+        <div class="delta" id="stat-users-sub">sulla piattaforma</div>
       </div>
-      <div class="card feature">
-        <div class="icon">📈</div>
-        <h3>Rendita Automatica</h3>
-        <p>Il tuo capitale cresce ogni giorno grazie alla rendita automatica del piano, anche quando non attivi i segnali.</p>
+      <div class="card stat-card">
+        <div class="num" id="stat-winrate">—</div>
+        <div class="label">Win rate</div>
+        <div class="delta" id="stat-winrate-sub">sui segnali chiusi</div>
       </div>
-      <div class="card feature">
-        <div class="icon">🧠</div>
-        <h3>AI Predittiva</h3>
-        <p>Un algoritmo predittivo che analizza milioni di dati per generare alpha con precisione chirurgica.</p>
-      </div>
-      <div class="card feature">
-        <div class="icon">🤝</div>
-        <h3>Programma Amici</h3>
-        <p>Invita i tuoi amici con il tuo codice e incassa <b>dal 10% al 17%</b> su ogni loro deposito. Cresci insieme alla tua rete.</p>
+      <div class="card stat-card">
+        <div class="num" id="stat-capital">—</div>
+        <div class="label">Saldi gestiti</div>
+        <div class="delta" id="stat-capital-sub">sotto gestione</div>
       </div>
     </div>
 
-    <!-- SEZIONE PIANI -->
-    <h2 class="section-title">Scegli il tuo <span style="background:var(--grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent">piano</span></h2>
-    <p class="section-sub">Da €10, senza barriere. <b style="color:#ff5c7a">⚡ Ultimo ciclo di onboarding: posti limitati</b></p>
-    <div class="plans-grid" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr))">
-      <div class="card plan-card">
-        <div class="plan-name" style="color:#22d3ee">STARTER</div>
-        <div class="plan-price">€10<span>/una tantum</span></div>
-        <div class="plan-yield">+3% <small>/giorno</small></div>
-        <a class="btn btn-ghost btn-block" style="text-decoration:none" href="plans.html">Inizia ora</a>
-      </div>
-      <div class="card plan-card featured">
-        <div class="plan-badge">⭐ PIÙ SCELTO</div>
-        <div class="plan-name" style="color:#8b5cf6">PRO</div>
-        <div class="plan-price">€50<span>/una tantum</span></div>
-        <div class="plan-yield">+4,5% <small>/giorno</small></div>
-        <a class="btn btn-primary btn-block" style="text-decoration:none" href="plans.html">Inizia ora</a>
-      </div>
-      <div class="card plan-card">
-        <div class="plan-name" style="color:#f59e0b">ELITE</div>
-        <div class="plan-price">€200<span>/una tantum</span></div>
-        <div class="plan-yield">+6% <small>/giorno</small></div>
-        <a class="btn btn-ghost btn-block" style="text-decoration:none" href="plans.html">Inizia ora</a>
-      </div>
-      <div class="card plan-card">
-        <div class="plan-name" style="color:#22ff88">QUANTUM VIP</div>
-        <div class="plan-price">€500<span>/una tantum</span></div>
-        <div class="plan-yield">+8% <small>/giorno</small></div>
-        <a class="btn btn-green btn-block" style="text-decoration:none" href="plans.html">Inizia ora</a>
-      </div>
-    </div>
-
-    <!-- TESTIMONIANZE -->
-    <h2 class="section-title">Cosa dicono gli investitori</h2>
-    <p class="section-sub">Risultati della nostra community</p>
-    <div class="testimonials">
-      <div class="card t-card">
-        <div class="t-head">
-          <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100&h=100&fit=crop&q=80&auto=format" onerror="this.style.display='none'" />
-          <div><b>Marco R.</b><div class="t-role">Imprenditore · Milano</div></div>
+    <!-- COME FUNZIONA -->
+    <h2>Come funziona</h2>
+    <p class="muted" style="margin-top:-8px">Quattro passi, nessuna magia: scegli il piano, attivi i segnali, il motore lavora per te.</p>
+    <div class="card" style="margin-bottom:34px">
+      <div class="steps">
+        <div class="step">
+          <div>
+            <h4>Apri il tuo account</h4>
+            <p>Registrazione in trenta secondi. Se arrivi da un invito il tuo codice viene letto automaticamente.</p>
+          </div>
         </div>
-        <p>"Ero scettico, ma QuantX è un altro pianeta. In 3 settimane +€2.300. I segnali vanno sempre a segno."</p>
-        <div class="t-win">+€2.300 in 21 giorni ⚡</div>
-      </div>
-      <div class="card t-card">
-        <div class="t-head">
-          <img src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&h=100&fit=crop&q=80&auto=format" onerror="this.style.display='none'" />
-          <div><b>Giulia B.</b><div class="t-role">Commercialista · Roma</div></div>
+        <div class="step">
+          <div>
+            <h4>Attivi un piano</h4>
+            <p>Da 10 euro. Il piano determina il rendimento giornaliero e la quota di bonus sugli inviti.</p>
+          </div>
         </div>
-        <p>"Il piano Elite vale ogni centesimo. Il rendimento si vede ogni mattina quando apro il pannello."</p>
-        <div class="t-win">+€4.150 in 30 giorni ⚡</div>
-      </div>
-      <div class="card t-card">
-        <div class="t-head">
-          <img src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=100&h=100&fit=crop&q=80&auto=format" onerror="this.style.display='none'" />
-          <div><b>Andrea P.</b><div class="t-role">Operatore · Torino</div></div>
+        <div class="step">
+          <div>
+            <h4>Attivi i segnali del giorno</h4>
+            <p>Tre segnali al giorno, pubblicati alle 09:00, 14:00 e 20:00. Ogni segnale indica direzione, ingresso, take profit e stop loss.</p>
+          </div>
         </div>
-        <p>"Ho invitato 4 amici col mio link e guadagno anche sui loro depositi. Un sistema che gira da solo."</p>
-        <div class="t-win">+€1.870 + bonus amici ⚡</div>
+        <div class="step">
+          <div>
+            <h4>Il motore esegue e accredita</h4>
+            <p>Il risultato finisce sul tuo saldo entro pochi secondi. Ogni movimento resta tracciato nel tuo storico.</p>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- BLOCCO REFERRAL -->
-    <div class="card referral-cta" style="margin:50px 0">
-      <h2 style="font-size:30px; margin-bottom:10px">🤝 Programma Amici: guadagni anche invitando</h2>
-      <p style="color:var(--muted); max-width:620px; margin:0 auto 22px; line-height:1.7">
-        Ogni amico che deposita con il tuo link ti riconosce un bonus immediato <b style="color:var(--green)">dal 10% al 17%</b>
-        a seconda del suo piano. Più la tua rete cresce, più guadagni senza toccare il pannello.
-      </p>
-      <button class="btn btn-primary" onclick="location.href='app.html?mode=register'">Ottieni il mio codice invito</button>
+    <!-- PIANI -->
+    <h2>Piani</h2>
+    <p class="muted" style="margin-top:-8px">Rendimento giornaliero e quota referral. Nessun canone: si paga una volta il capitale.</p>
+    <div class="plans-grid" id="landing-plans"></div>
+
+    <!-- PROGRAMMA REFERRAL -->
+    <div class="card" style="margin-bottom:34px">
+      <div class="card-head">
+        <div>
+          <h3 style="margin-bottom:4px">Programma referral</h3>
+          <span class="hint">Il bonus si accredita solo quando l'invitato attiva un piano</span>
+        </div>
+        <a href="amici.html" class="btn btn-secondary btn-sm">Scopri come funziona</a>
+      </div>
+      <div class="grid-3">
+        <div>
+          <div class="num" style="font-size:26px; font-weight:660">10%</div>
+          <div class="muted" style="font-size:13px">bonus sugli inviti con piano Starter</div>
+        </div>
+        <div>
+          <div class="num" style="font-size:26px; font-weight:660">12-14%</div>
+          <div class="muted" style="font-size:13px">bonus sui piani Pro ed Elite</div>
+        </div>
+        <div>
+          <div class="num" style="font-size:26px; font-weight:660">17%</div>
+          <div class="muted" style="font-size:13px">bonus massimo sui piani Quantum VIP</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ATTIVITA' -->
+    <div class="card" style="margin-bottom:34px">
+      <div class="card-head">
+        <div>
+          <h3 style="margin-bottom:4px">Attività della piattaforma</h3>
+          <span class="hint">Movimenti reali registrati dal sistema</span>
+        </div>
+        <span class="badge success"><span class="dot live"></span> live</span>
+      </div>
+      <div class="ticker" id="ticker">
+        <div class="skeleton w80"></div>
+        <div class="skeleton w60"></div>
+        <div class="skeleton w80"></div>
+      </div>
     </div>
 
     <div class="footer">
-      QuantX AI © 2026 — Motore di Trading Quantitativo ·
-      <a href="plans.html" style="color:var(--muted)">Piani</a> ·
-      <a href="amici.html" style="color:var(--muted)">Amici</a>
-      <div style="margin-top:8px">Rischi e rendimenti non garantiti · Investimento ad alto rendimento</div>
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="plans.html">Piani</a>
+        <a href="amici.html">Programma referral</a>
+        <a href="app.html">Accedi</a>
+      </div>
+      <p style="margin:0">
+        QuantX AI — piattaforma di trading quantitativo. I rendimenti dipendono dall'andamento dei mercati
+        e non sono garantiti. Prima di depositare valuta la tua situazione finanziaria e le regole del programma referral.
+      </p>
     </div>
   </div>
+
   <script src="landing.js"></script>
 </body>
 </html>

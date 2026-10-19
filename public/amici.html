@@ -3,71 +3,127 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QuantX AI — Amici e Bonus</title>
+  <title>QuantX AI — Programma referral</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
     <nav class="nav">
-      <div class="logo" onclick="location.href='index.html'">QUANT<span>X</span> AI</div>
-      <div id="nav-links" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
-        <a href="app.html" class="btn btn-ghost" style="text-decoration:none">Dashboard</a>
-        <a href="plans.html" class="btn btn-ghost" style="text-decoration:none">Piani</a>
+      <div class="logo" onclick="location.href='index.html'"><span class="mark">Q</span> QuantX <span>AI</span></div>
+      <div class="nav-links" id="nav-links">
+        <a href="index.html" class="btn btn-ghost">Home</a>
+        <a href="plans.html" class="btn btn-ghost">Piani</a>
+        <a href="app.html" class="btn btn-secondary">Dashboard</a>
         <button class="btn btn-ghost" onclick="logout()">Esci</button>
       </div>
     </nav>
 
-    <section class="hero" style="padding:40px 20px 20px">
-      <div class="badge">🤝 Programma Amici QuantX</div>
-      <h1>Invita i tuoi <span class="grad">amici</span> e guadagna a vita</h1>
-      <p>Per ogni amico che si registra con il tuo link e <b>deposita</b> sui piani QuantX, ricevi un bonus immediato <b>dal 10% al 17%</b> del suo deposito. Il bonus si sblocca solo quando il tuo amico investe davvero.</p>
+    <section class="hero" style="padding-bottom:24px">
+      <span class="eyebrow">Programma referral</span>
+      <h1>Invita, <span class="grad">guadagna insieme.</span></h1>
+      <p>
+        Ogni persona che si registra con il tuo codice entra nella tua rete. Quando l'invitato attiva
+        un piano, ricevi subito una quota del suo deposito, calcolata sul piano scelto.
+      </p>
     </section>
 
     <div class="stats-grid">
-      <div class="card stat-card"><div class="num" id="st-total">0</div><div class="label">Amici invitati</div></div>
-      <div class="card stat-card"><div class="num" id="st-active">0</div><div class="label">Amici attivi (che hanno depositato)</div></div>
-      <div class="card stat-card"><div class="num" id="st-earned">€0</div><div class="label">Bonus guadagnato</div></div>
-      <div class="card stat-card"><div class="num" id="st-code">—</div><div class="label">Il tuo codice invito</div></div>
+      <div class="card stat-card">
+        <div class="num" id="st-total">0</div>
+        <div class="label">Inviti totali</div>
+        <div class="delta" id="st-total-sub">registrati con il tuo codice</div>
+      </div>
+      <div class="card stat-card">
+        <div class="num" id="st-active">0</div>
+        <div class="label">Inviti attivi</div>
+        <div class="delta" id="st-active-sub">hanno attivato un piano</div>
+      </div>
+      <div class="card stat-card">
+        <div class="num" id="st-earned">€0</div>
+        <div class="label">Bonus accumulati</div>
+        <div class="delta" id="st-earned-sub">accreditati sul saldo</div>
+      </div>
+      <div class="card stat-card">
+        <div class="num" id="st-code" style="font-size:22px">—</div>
+        <div class="label">Il tuo codice</div>
+        <div class="delta">usato per i nuovi inviti</div>
+      </div>
     </div>
 
-    <div class="card" style="margin-bottom:24px">
-      <h3 style="margin-bottom:12px">🔗 Il tuo link personale</h3>
-      <p style="color:var(--muted); font-size:14px; margin-bottom:14px">Chi si registra da questo link diventa parte della tua rete: ogni suo deposito ti paga un bonus.</p>
+    <!-- LINK -->
+    <div class="card" style="margin-bottom:26px">
+      <div class="card-head">
+        <div>
+          <h3 style="margin-bottom:4px">Il tuo link di invito</h3>
+          <span class="hint">Il codice viene letto in automatico in fase di registrazione</span>
+        </div>
+      </div>
       <div class="ref-link-box">
         <span id="ref-link">—</span>
-        <button class="btn btn-primary" style="padding:10px 18px; font-size:14px" onclick="copyRef()">Copia</button>
+        <button class="btn btn-primary btn-sm" onclick="copyRef()">Copia link</button>
       </div>
-      <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap">
-        <button class="btn btn-green" style="padding:12px 18px" onclick="share('wa')">📲 Condividi su WhatsApp</button>
-        <button class="btn btn-ghost" style="padding:12px 18px" onclick="share('tg')">✈️ Condividi su Telegram</button>
-        <button class="btn btn-ghost" style="padding:12px 18px" onclick="share('sms')">💬 Invia via SMS</button>
+      <div style="display:flex; gap:8px; margin-top:14px; flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="share('wa')">Condividi su WhatsApp</button>
+        <button class="btn btn-secondary btn-sm" onclick="share('tg')">Condividi su Telegram</button>
+        <button class="btn btn-secondary btn-sm" onclick="share('sms')">Invia via SMS</button>
       </div>
-      <p id="invite-text" style="color:var(--muted); font-size:13px; margin-top:14px; line-height:1.6"></p>
+      <p class="help" id="invite-text" style="margin-top:14px"></p>
     </div>
 
-    <div class="card" style="margin-bottom:24px">
-      <h3 style="margin-bottom:16px">👥 I tuoi amici</h3>
-      <div id="friends-list"><p style="color:var(--muted)">Caricamento...</p></div>
+    <!-- COME FUNZIONA -->
+    <div class="card" style="margin-bottom:26px">
+      <div class="card-head"><h3>Come si guadagna</h3></div>
+      <div class="steps">
+        <div class="step">
+          <div>
+            <h4>Condividi il link</h4>
+            <p>Chi si registra tramite il tuo link resta collegato a te.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h4>L'invitato attiva un piano</h4>
+            <p>Il bonus si genera solo sui depositi confermati, non sulla sola registrazione.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h4>Ricevi la quota</h4>
+            <p>10% con Starter, 12% con Pro, 14% con Elite, 17% con Quantum VIP. L'accredito è immediato.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div>
+            <h4>Continua a guadagnare</h4>
+            <p>Il programma è attivo per sempre: anche i depositi futuri dei tuoi invitati contano.</p>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="card" style="margin-bottom:40px">
-      <h3 style="margin-bottom:16px">❓ Come funziona</h3>
-      <div class="signal" style="margin-bottom:12px">
-        <div class="info"><h4>1. Condividi il tuo link</h4><div class="meta">Invialo a chi vuoi. Ogni persona che si registra entra nella tua rete.</div></div>
+    <!-- INVITATI -->
+    <div class="card" style="margin-bottom:26px">
+      <div class="card-head">
+        <h3>I tuoi inviti</h3>
+        <span class="hint" id="friends-count">—</span>
       </div>
-      <div class="signal" style="margin-bottom:12px">
-        <div class="info"><h4>2. Il tuo amico attiva un piano</h4><div class="meta">Da €10 con Starter. Più alto è il piano, più alto è il tuo bonus.</div></div>
-      </div>
-      <div class="signal" style="margin-bottom:12px">
-        <div class="info"><h4>3. Incassi il bonus</h4><div class="meta">10% Starter · 12% Pro · 14% Elite · 17% Quantum VIP. Accreditato subito sul tuo saldo.</div></div>
-      </div>
-      <div class="signal">
-        <div class="info"><h4>4. Vale per sempre</h4><div class="meta">Continui a guadagnare sui depositi dei tuoi amici, per sempre.</div></div>
+      <div class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr><th>Invitato</th><th>Stato</th><th class="right">Deposito</th><th class="right">Bonus</th><th>Registrato</th></tr>
+          </thead>
+          <tbody id="friends-body"><tr><td colspan="5" class="muted">Caricamento...</td></tr></tbody>
+        </table>
       </div>
     </div>
 
     <div class="footer">
-      QuantX AI © 2026 — Programma Amici · I bonus sono accreditati sul saldo della piattaforma
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="plans.html">Piani</a>
+        <a href="app.html">Dashboard</a>
+      </div>
+      <p style="margin:0">Il programma referral è soggetto a revoca in caso di uso fraudolento del codice.</p>
     </div>
   </div>
 
