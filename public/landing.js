@@ -88,7 +88,8 @@ async function loadPlans() {
           '<li><span class="yes"></span>3 segnali al giorno</li>' +
           '<li><span class="yes"></span>Prelevi da ' + eur(p.minDeposit) + '</li>' +
         '</ul>' +
-        '<a href="app.html?mode=register" class="btn ' + (featured ? 'btn-primary' : 'btn-secondary') + ' btn-block">Apri un account</a>' +
+        '<a href="app.html?mode=register&plan=' + p.id + '" class="btn ' + (featured ? 'btn-primary' : 'btn-secondary') + ' btn-block">Scegli ' + p.name + '</a>' +
+        '<a href="plans.html" class="btn btn-ghost btn-block" style="margin-top:8px">Confronta i piani</a>' +
       '</div>';
     }).join('');
   } catch (e) { /* ignora */ }

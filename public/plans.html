@@ -102,7 +102,7 @@
       ['Deposito minimo', p => eur(p.minDeposit)],
       ['Deposito massimo', p => p.maxDeposit ? eur(p.maxDeposit) : '—'],
       ['Rendimento giornaliero', p => '+' + String(p.dailyYieldPct).replace('.', ',') + '%'],
-      ['Rendimento su 100 euro', p => '+' + (Math.round(p.minDeposit ? 100 * p.dailyYieldPct / 100 * 100) / 100 : 0) + ' €/g'],
+      ['Rendimento su 100 euro', p => '+' + String(p.dailyYieldPct).replace('.', ',') + ' €/g'],
       ['Bonus sugli inviti', p => p.refBonusPct + '%'],
       ['Segnali giornalieri', p => '3'],
       ['Prelevi', p => 'da ' + eur(p.minDeposit)],

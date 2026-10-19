@@ -1116,6 +1116,19 @@ app.get('/api/admin/daily', adminAuth, (req, res) => {
   });
 });
 
+// ---------- DIAGNOSTICA ----------
+process.on('uncaughtException', (err) => {
+  console.error('[QuantX] UNCAUGHT EXCEPTION:', err && err.stack ? err.stack : err);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('[QuantX] UNHANDLED REJECTION:', err && err.stack ? err.stack : err);
+});
+process.on('exit', (code) => {
+  console.log('[QuantX] uscita con codice ' + code + ' alle ' + new Date().toISOString());
+});
+process.on('SIGTERM', () => console.log('[QuantX] SIGTERM ricevuto alle ' + new Date().toISOString()));
+process.on('SIGINT', () => console.log('[QuantX] SIGINT ricevuto alle ' + new Date().toISOString()));
+
 // ---------- START SERVER ----------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
