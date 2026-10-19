@@ -142,14 +142,15 @@ async function loadDeposits() {
     <tr>
       <td>${d.email}<div style="color:var(--muted); font-size:12px">${d.name || ''}</div></td>
       <td style="color:var(--green); font-weight:700">${fmt(d.amount)}</td>
-      <td>${d.plan || '—'}</td>
+      <td>${d.method === 'crypto' ? '<span style="color:#f59e0b">Crypto</span>' : '<span style="color:var(--green)">Carta</span>'}</td>
+      <td>${d.plan || '-'}</td>
       <td>${d.confirmed ? '<span style="color:var(--green)">Confermato</span>' : '<span style="color:#f59e0b">In attesa</span>'}</td>
       <td>${dt(d.date)}</td>
       <td>
         <button class="btn btn-ghost" style="padding:6px 12px" onclick="depStatus(${d.id}, 'confermato', this)">Conferma</button>
         <button class="btn btn-ghost" style="padding:6px 12px" onclick="depStatus(${d.id}, 'annullato', this)">Annulla</button>
       </td>
-    </tr>`).join('') : '<tr><td colspan="6" style="color:var(--muted)">Nessun deposito.</td></tr>';
+    </tr>`).join('') : '<tr><td colspan="7" style="color:var(--muted)">Nessun deposito.</td></tr>';
 }
 
 async function loadWithdrawals() {

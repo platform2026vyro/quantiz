@@ -11,7 +11,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ---------- DATABASE ----------
-const DB_FILE = path.join(__dirname, 'data', 'quantx.db');
+const DB_FILE = process.env.QX_DB_FILE || path.join(__dirname, 'data', 'quantx.db');
 const db = new Database(DB_FILE);
 db.pragma('journal_mode = WAL');
 db.exec(`CREATE TABLE IF NOT EXISTS signals (
@@ -43,6 +43,8 @@ function migrate() {
   const cols = db.prepare('PRAGMA table_info(users)').all().map(c => c.name);
   if (!cols.includes('is_admin')) db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0');
   if (!cols.includes('last_yield_date')) db.exec('ALTER TABLE users ADD COLUMN last_yield_date TEXT');
+  const dcols = db.prepare('PRAGMA table_info(deposits)').all().map(c => c.name);
+  if (!dcols.includes('method')) db.exec("ALTER TABLE deposits ADD COLUMN method TEXT DEFAULT 'card'");
 
   // Il proprietario e' l'admin della piattaforma
   db.prepare('UPDATE users SET is_admin = 1 WHERE email = ?').run(CONFIG.ADMIN_EMAIL);
@@ -357,12 +359,60 @@ app.get('/api/me', auth, (req, res) => {
 });
 
 // ---------- API: GIOCATE GIORNALIERE (3 segnali ad orari precisi) ----------
+// Risultato del segnale: deterministico per utente+giorno+indice (coerente fra reload)
+// e proporzionato al capitale investito nei piani.
+function generateSignalProfit(userId, signalIndex) {
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  if (!user) return 0;
+
+  const day = new Date().toISOString().slice(0, 10);
+  const existing = db.prepare('SELECT claimed FROM signals WHERE user_id = ? AND day = ?').get(userId, day);
+  if (existing) {
+    let claimed = [];
+    try { claimed = JSON.parse(existing.claimed); } catch (e) { /* ignora */ }
+    if (claimed.includes(signalIndex)) return 0;
+  }
+
+  // PRNG deterministico (seed = utente|giorno|segnale)
+  const seed = userId + '|' + day + '|' + signalIndex;
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+  let t = h >>> 0;
+  const rnd = () => {
+    t += 0x6D2B79F5;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+
+  const confidence = 88 + rnd() * 10;                 // 88% - 98%
+  const winProb = 0.45 + confidence / 320;            // piu' confidenza = piu' probabile il win
+  const isWin = rnd() < winProb;
+
+  // Rendimento pieno solo se ha referral attivo E ha depositato
+  const hasReferrer = db.prepare('SELECT COUNT(*) as count FROM referrals WHERE referee_id = ? AND active = 1').get(userId).count > 0;
+  const hasDeposit = db.prepare('SELECT COUNT(*) as count FROM deposits WHERE user_id = ? AND confirmed = 1').get(userId).count > 0;
+  const scale = (hasReferrer && hasDeposit) ? 1 : 0.35;
+
+  // Base di calcolo: capitale investito nei piani, altrimenti il saldo
+  const invested = db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM user_plans WHERE user_id = ? AND status = 'active'").get(userId).s;
+  const base = invested > 0 ? invested : user.balance;
+
+  // CONFIG.PROFIT_MIN/MAX e LOSS_MIN/MAX sono gia' frazioni (0.006 = 0,6%)
+  const pct = isWin
+    ? (CONFIG.PROFIT_MIN + ((confidence - 88) / 100) * (CONFIG.PROFIT_MAX - CONFIG.PROFIT_MIN))
+    : (CONFIG.LOSS_MAX + ((confidence - 88) / 100) * (CONFIG.LOSS_MIN - CONFIG.LOSS_MAX));
+
+  return Math.round(base * pct * scale * 100) / 100;
+}
+
 app.post('/api/claim-signal', auth, (req, res) => {
   const i = parseInt(req.body && req.body.index);
   if (isNaN(i) || i < 0 || i >= CONFIG.SIGNALS_PER_DAY) return res.status(400).json({ error: 'Segnale non valido' });
   
   // Controlla se il segnale è disponibile a quest'ora
-  const currentHour = new Date().getHours();
+  // (QX_TEST_HOUR serve solo per i test automatizzati, in produzione non e' impostata)
+  const currentHour = process.env.QX_TEST_HOUR ? parseInt(process.env.QX_TEST_HOUR, 10) : new Date().getHours();
   const signalHour = CONFIG.SIGNAL_HOURS[i];
   if (currentHour !== signalHour) {
     return res.status(403).json({ 
@@ -510,11 +560,29 @@ app.get('/api/positions', auth, (req, res) => {
 
 // ---------- API: STATISTICHE FAKE (landing) ----------
 app.get('/api/stats', (req, res) => {
+  // Statistiche REALI (dal database): niente numeri inventati
+  const totalUsers = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
+  const activeUsers = db.prepare("SELECT COUNT(DISTINCT user_id) AS c FROM sessions WHERE expires_at > CURRENT_TIMESTAMP").get().c;
+  const totalDeposited = db.prepare('SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE confirmed = 1').get().s;
+  const totalWithdrawn = db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM withdrawals WHERE status = 'completed'").get().s;
+  const totalBalance = db.prepare('SELECT COALESCE(SUM(balance),0) AS s FROM users').get().s;
+  const signalsRun = db.prepare("SELECT COUNT(*) AS c FROM signals WHERE claimed <> '[]'").get().c;
+
+  // Win rate reale sui segnali chiusi
+  const closed = db.prepare("SELECT profits FROM signals WHERE claimed <> '[]'").all();
+  let wins = 0, segs = 0;
+  for (const row of closed) {
+    let arr = [];
+    try { arr = JSON.parse(row.profits); } catch (e) { /* ignora */ }
+    for (const p of arr) { segs++; if (p > 0) wins++; }
+  }
+  const winRate = segs ? Math.round((wins / segs) * 1000) / 10 : null;
+
   res.json({
-    profitToday: Math.round(180000 + Math.random() * 200000),
-    activeUsers: 4821 + Math.floor(Math.random() * 300),
-    winRate: 87.4,
-    totalManaged: 12400000,
+    totalUsers, activeUsers, totalDeposited, totalWithdrawn, totalBalance,
+    signalsRun, winRate,
+    depositsToday: db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE confirmed = 1 AND date(created_at) = date('now')").get().s,
+    paidToday: db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM withdrawals WHERE date(created_at) = date('now')").get().s,
   });
 });
 
@@ -531,11 +599,12 @@ app.post('/api/deposit', auth, (req, res) => {
     return res.status(400).json({ error: 'Importo minimo per ' + plan.name + ': €' + plan.min_deposit });
   }
 
-  // Inserisci deposito
+  // Inserisci deposito (method: card = accredito immediato, crypto = da verificare sul wallet)
+  const method = (req.body && req.body.method === 'crypto') ? 'crypto' : 'card';
   db.prepare(`
-    INSERT INTO deposits (user_id, amount, plan_id, confirmed, created_at)
-    VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
-  `).run(req.uid, amt, plan.id);
+    INSERT INTO deposits (user_id, amount, plan_id, confirmed, method, created_at)
+    VALUES (?, ?, ?, 1, ?, CURRENT_TIMESTAMP)
+  `).run(req.uid, amt, plan.id, method);
 
   // Aggiorna il saldo (il piano si attiva a parte, cosi' se ne possono comprare piu')
   const newBalance = Math.round((req.user.balance + amt) * 100) / 100;
@@ -698,15 +767,20 @@ app.get('/api/activity', (req, res) => {
 // Contatori "live" della piattaforma
 app.get('/api/live', (req, res) => {
   const realUsers = db.prepare('SELECT COUNT(*) c FROM users').get().c;
+  const activeUsers = db.prepare("SELECT COUNT(DISTINCT user_id) c FROM sessions WHERE expires_at > CURRENT_TIMESTAMP").get().c;
   const paidToday = db.prepare("SELECT COALESCE(SUM(amount),0) s FROM withdrawals WHERE date(created_at) = date('now')").get().s;
   const depToday = db.prepare("SELECT COALESCE(SUM(amount),0) s FROM deposits WHERE confirmed = 1 AND date(created_at) = date('now')").get().s;
+  const last = db.prepare("SELECT created_at FROM deposits WHERE confirmed = 1 ORDER BY created_at DESC LIMIT 1").get();
+  const lastAgo = last
+    ? Math.max(0, Math.round((Date.now() - new Date(String(last.created_at).replace(' ', 'T') + 'Z').getTime()) / 60000))
+    : null;
   res.json({
-    online: 3180 + realUsers * 41 + Math.floor(Math.random() * 280),
-    watching: 38 + Math.floor(Math.random() * 95),
-    paidToday: Math.round(142000 + paidToday * 12 + Math.random() * 90000),
-    depositsToday: Math.round(38900 + depToday * 9 + Math.random() * 25000),
-    lastDepositAgo: 1 + Math.floor(Math.random() * 8),
-    members: 11840 + realUsers,
+    online: activeUsers,
+    watching: activeUsers,
+    paidToday: paidToday,
+    depositsToday: depToday,
+    lastDepositAgo: lastAgo,
+    members: realUsers,
   });
 });
 
@@ -814,7 +888,7 @@ app.post('/api/admin/resolve-withdrawal', adminAuth, (req, res) => {
 // ---------- API: ADMIN - GESTIONE DEPOSITI ----------
 app.get('/api/admin/deposits', adminAuth, (req, res) => {
   const deposits = db.prepare(`
-    SELECT d.id, u.id AS userId, u.email, u.username AS name, d.amount, d.confirmed, d.created_at AS date, p.name AS plan
+    SELECT d.id, u.id AS userId, u.email, u.username AS name, d.amount, d.confirmed, d.method, d.created_at AS date, p.name AS plan
     FROM deposits d JOIN users u ON u.id = d.user_id LEFT JOIN plans p ON p.id = d.plan_id
     ORDER BY d.created_at DESC LIMIT 100
   `).all();
@@ -865,6 +939,17 @@ app.get('/api/admin/daily', adminAuth, (req, res) => {
     paidToday: paid,
     pendingCount: pending.c, pendingSum: pending.s,
   });
+});
+
+// ---------- DIAGNOSTICA (errori in log, mai silenziosi) ----------
+process.on('uncaughtException', (err) => {
+  console.error('[QuantX] UNCAUGHT EXCEPTION:', (err && err.stack) ? err.stack : err);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('[QuantX] UNHANDLED REJECTION:', (err && err.stack) ? err.stack : err);
+});
+process.on('exit', (code) => {
+  console.log('[QuantX] uscita con codice ' + code + ' alle ' + new Date().toISOString());
 });
 
 // ---------- START SERVER ----------

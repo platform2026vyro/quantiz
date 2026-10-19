@@ -6,7 +6,10 @@ const num = (v) => Math.round(v).toLocaleString('it-IT');
 
 function animate(el, target, fmtFn, dur) {
   if (!el) return;
-  const from = parseFloat(String(el.textContent).replace(/[^0-9.]/g, '')) || 0;
+  // Valore subito (se la tab e' in background rAF non gira e il numero resterebbe a 0)
+  el.textContent = fmtFn(target);
+  if (typeof document !== 'undefined' && document.hidden) return;
+  const from = 0;
   const start = performance.now();
   const time = dur || 1400;
   const tick = (now) => {
@@ -21,10 +24,11 @@ function animate(el, target, fmtFn, dur) {
 async function loadStats() {
   const res = await fetch('/api/stats');
   const s = await res.json();
-  animate($('stat-profit'), s.profitToday, eur);
-  animate($('stat-users'), s.activeUsers, num);
-  animate($('stat-winrate'), s.winRate, (v) => v.toFixed(1) + '%');
-  animate($('stat-capital'), s.totalManaged, (v) => '€' + (v / 1000000).toFixed(1) + 'M');
+  animate($('stat-profit'), s.totalDeposited, eur);
+  animate($('stat-users'), s.totalUsers, num);
+  if (s.winRate !== null && s.winRate !== undefined) animate($('stat-winrate'), s.winRate, (v) => v.toFixed(1).replace('.', ',') + '%');
+  else $('stat-winrate').textContent = 'n/d';
+  animate($('stat-capital'), s.totalBalance, eur);
 }
 
 // Contatori live: cambiano ogni pochi secondi, come una piattaforma attiva

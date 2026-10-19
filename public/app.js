@@ -307,9 +307,10 @@ function closeModal(id) { $('modal-' + id).classList.remove('show'); }
 async function doDeposit(btn) {
   const amount = $('dep-amount').value;
   if (!amount || Number(amount) <= 0) return toast('Inserisci un importo valido');
+  const method = $('dep-method') ? $('dep-method').value : 'card';
   const data = await withBtn(btn, '⏳ Verifica pagamento...', async () => {
     await new Promise(r => setTimeout(r, 900));   // come la conferma di un pagamento vero
-    return api('/api/deposit', { method: 'POST', body: JSON.stringify({ amount }) });
+    return api('/api/deposit', { method: 'POST', body: JSON.stringify({ amount, method }) });
   });
   if (data.error) return toast(data.error);
   closeModal('deposit');
@@ -317,6 +318,16 @@ async function doDeposit(btn) {
   toast('✅ Deposito di ' + fmt(amount) + ' confermato · piano ' + (data.deposit ? data.deposit.plan : 'attivo'));
   if (data.user) animateBalance($('balance'), data.user.balance);
   loadMyActivity();
+  loadPositions();
+}
+
+// Metodo di pagamento: carta (accredito immediato) oppure crypto (wallet)
+function togglePayMethod() {
+  const m = $('dep-method') ? $('dep-method').value : 'card';
+  const card = $('dep-card-box');
+  const crypto = $('dep-crypto-box');
+  if (card) card.style.display = m === 'card' ? 'block' : 'none';
+  if (crypto) crypto.style.display = m === 'crypto' ? 'block' : 'none';
 }
 
 async function doWithdraw(btn) {

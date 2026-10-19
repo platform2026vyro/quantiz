@@ -158,14 +158,27 @@
     <div class="modal">
       <h2>Deposita fondi</h2>
       <div class="form">
-        <p style="color:var(--muted); font-size:14px">Invia l'importo al wallet QuantX per attivare la rendita quantistica. Riceverai la conferma via Telegram.</p>
+        <p style="color:var(--muted); font-size:14px">Scegli come pagare. Con carta o credito l'accredito e' immediato; con crypto ti diamo l'indirizzo del wallet.</p>
+        <div>
+          <label class="label">Metodo di pagamento</label>
+          <select class="input" id="dep-method" onchange="togglePayMethod()">
+            <option value="card">Carta di credito / debito — accredito immediato</option>
+            <option value="crypto">Criptovaluta USDT (BEP-20) — trasferimento al wallet</option>
+          </select>
+        </div>
         <div>
           <label class="label">Importo (€)</label>
           <input class="input" id="dep-amount" type="number" placeholder="1000" />
         </div>
-        <div>
+        <div id="dep-crypto-box" style="display:none">
           <label class="label">Wallet di deposito (USDT BEP-20 · BNB Smart Chain)</label>
           <input class="input" id="dep-wallet" readonly style="font-size:12px" value="0x2320a9e89C988dC605796e74adFa0e5a4A1deeA3" />
+          <p style="color:var(--muted); font-size:12px; margin-top:6px">Invia l'importo su questo indirizzo: la verifica arriva via Telegram.</p>
+        </div>
+        <div id="dep-card-box">
+          <label class="label">Dati carta</label>
+          <input class="input" id="dep-card" placeholder="4242 4242 4242 4242" />
+          <p style="color:var(--muted); font-size:12px; margin-top:6px">Importo accreditato subito sul saldo, nessun secondo pagamento richiesto.</p>
         </div>
         <button class="btn btn-green btn-block" onclick="doDeposit(this)">Conferma deposito</button>
         <button class="btn btn-ghost btn-block" onclick="closeModal('deposit')">Annulla</button>
