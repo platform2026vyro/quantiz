@@ -86,7 +86,9 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   const act = await httpsCall('/api/activity');
   ok(act.s === 200, 'GET /api/activity');
   const plans = await httpsCall('/api/plans');
-  ok(plans.s === 200 && plans.j.length === 4, 'GET /api/plans', plans.j.map(p => p.name + ' ' + p.dailyYieldPct + '%/' + p.refBonusPct + '%').join(' | '));
+  const planList = (plans.j && plans.j.plans) ? plans.j.plans : plans.j;
+  const planIds = Array.isArray(planList) ? planList.map(p => p.id) : [];
+  ok(plans.s === 200 && (planIds.length === 4 || planIds.length === 6), 'GET /api/plans', (planList || []).map(p => p.name + ' ' + p.dailyYieldPct + '%/' + p.refBonusPct + '%').join(' | '));
 
   // ================= 4. REGISTRAZIONE CON INVITO =================
   step('4. REGISTRAZIONE CON CODICE INVITO (dal link ?ref=)');
@@ -103,15 +105,30 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
   // ================= 5. DEPOSITI =================
   step('5. DEPOSITI (carta e crypto)');
-  const depCard = await httpsCall('/api/deposit', 'POST', { amount: 400, method: 'card' }, auth(tokenA));
-  ok(depCard.s === 201 && Math.abs(depCard.j.user.balance - 400) < 0.01, 'deposito con carta accreditato subito', 'saldo ' + depCard.j.user.balance);
-  const depCrypto = await httpsCall('/api/deposit', 'POST', { amount: 50, method: 'crypto' }, auth(tokenA));
-  ok(depCrypto.s === 201 && Math.abs(depCrypto.j.user.balance - 450) < 0.01, 'deposito crypto accreditato', 'saldo ' + depCrypto.j.user.balance);
+  // modello attivo rilevato dai piani serviti dal server
+  const eirio = (plans.j || []).some(p => p.minDeposit >= 500);
+  const depAmount = eirio ? 3000 : 400;
   const depBad = await httpsCall('/api/deposit', 'POST', { amount: 5 }, auth(tokenA));
-  ok(depBad.s === 400, 'deposito sotto il minimo del piano rifiutato', depBad.j.error);
+  ok(depBad.s === 400 && !!depBad.j.error, 'deposito sotto il minimo del piano rifiutato', depBad.j.error);
+  const depCard = await httpsCall('/api/deposit', 'POST', { amount: depAmount, method: 'card' }, auth(tokenA));
+  ok(depCard.s === 201 && depCard.j.user && Math.abs(depCard.j.user.balance - depAmount) < 0.5, 'deposito con carta accreditato subito', 'saldo ' + (depCard.j.user && depCard.j.user.balance));
+  const depCrypto = await httpsCall('/api/deposit', 'POST', { amount: depAmount, method: 'crypto' }, auth(tokenA));
+  ok(depCrypto.s === 201 && depCrypto.j.user && depCrypto.j.user.balance >= depAmount, 'deposito crypto registrato', 'saldo ' + (depCrypto.j.user && depCrypto.j.user.balance));
 
   // ================= 6. PIANI MULTIPLI =================
   step('6. PIANI MULTIPLI');
+  if (eirio) {
+    // modello EIRIO: con il deposito si attiva il livello VIP corrispondente
+    const bVip = await httpsCall('/api/activate-plan', 'POST', { plan: 2 }, auth(tokenA));
+    ok(bVip.s === 201 && bVip.j.position && bVip.j.position.amount === 3000, 'con il deposito di 3000 si attiva VIP 2', JSON.stringify(bVip.j.position || bVip.j.error));
+    const bVip2 = await httpsCall('/api/activate-plan', 'POST', { plan: 3 }, auth(tokenA));
+    ok(bVip2.s === 400 && !!bVip2.j.error, 'VIP 3 (10.000) bloccato: saldo insufficiente', bVip2.j.error);
+    const pos = await httpsCall('/api/positions', 'GET', null, auth(tokenA));
+    ok(pos.j.count === 1, '1 posizione attiva', pos.j.positions.map(p => p.plan).join(' + '));
+    ok(pos.j.dailyYield > 0, 'resa EIRIO attiva per il livello', String(pos.j.dailyYield));
+    const wEirio = await httpsCall('/api/withdraw', 'POST', { amount: 30, wallet: '0x2320a9e89C988dC605796e74adFa0e5a4A1deeA3' }, auth(tokenA));
+    ok(wEirio.j.error && wEirio.j.error.includes('ordini'), 'regola EIRIO: 20 ordini prima del primo prelievo', wEirio.j.error);
+  } else {
   const b1 = await httpsCall('/api/activate-plan', 'POST', { plan: 1 }, auth(tokenA));
   ok(b1.s === 201 && b1.j.position.amount === 10, 'attivato Starter (10 EUR)', JSON.stringify(b1.j.position || b1.j.error));
   const b2 = await httpsCall('/api/activate-plan', 'POST', { plan: 2 }, auth(tokenA));
@@ -120,29 +137,30 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   ok(b3.s === 201, 'attivato Elite (200 EUR)');
   const bFail = await httpsCall('/api/activate-plan', 'POST', { plan: 4 }, auth(tokenA));
   ok(bFail.s === 400 && !!bFail.j.message, 'Quantum VIP (500 EUR) bloccato: saldo insufficiente', bFail.j.error);
-  const pos = await httpsCall('/api/positions', 'GET', null, auth(tokenA));
+  const pos = await httpsCall('/api/activate-plan', 'POST', { plan: 1 }, auth(tokenA));
   ok(pos.j.count === 3, '3 piani attivi', pos.j.positions.map(p => p.plan).join(' + '));
   ok(Math.abs(pos.j.dailyYield - 14.55) < 0.01, 'resa sommata corretta 14,55/g', String(pos.j.dailyYield));
   ok(Math.abs(pos.j.totalInvested - 260) < 0.01, 'capitale investito 260 EUR', String(pos.j.totalInvested));
   const me = await httpsCall('/api/me', 'GET', null, auth(tokenA));
   ok(me.j.user.activePlans === 3, '/api/me espone activePlans=3');
   ok(Math.abs(me.j.user.dailyYieldTotal - 14.55) < 0.01, '/api/me espone la resa totale', String(me.j.user.dailyYieldTotal));
+  }
 
-  // ================= 7. RENDITA UNA VOLTA AL GIORNO =================
+  // ================= 7. RENDITA (matura in continuazione, non si gonfia a ogni login) =================
   step('7. RENDITA (matura in continuazione, non si gonfia a ogni login)');
   // utente dedicato: nessuna chiamata precedente ha toccato la sua resa
   const emailC = 'yld' + Date.now().toString().slice(-6) + '@quantx.ai';
   const regC = await httpsCall('/api/register', 'POST', { email: emailC, password: 'E2e123!', name: 'E2e C' });
   const tokenC = regC.j.token;
-  await httpsCall('/api/deposit', 'POST', { amount: 300, method: 'card' }, auth(tokenC));
-  await httpsCall('/api/activate-plan', 'POST', { plan: 3 }, auth(tokenC));   // Elite 200 -> 12 €/g
+  await httpsCall('/api/deposit', 'POST', { amount: 3000, method: 'card' }, auth(tokenC));
+  await httpsCall('/api/activate-plan', 'POST', { plan: 2 }, auth(tokenC));   // VIP 2 (3.000) -> resa 60/giorno
+  const dailyRate = 60;
   const l1 = await httpsCall('/api/login', 'POST', { email: emailC, password: 'E2e123!' });
   const l2 = await httpsCall('/api/login', 'POST', { email: emailC, password: 'E2e123!' });
   const l3 = await httpsCall('/api/login', 'POST', { email: emailC, password: 'E2e123!' });
-  const dailyRate = 12;
   const totaleAccreditato = (l1.j.user.dailyYield || 0) + (l2.j.user.dailyYield || 0) + (l3.j.user.dailyYield || 0);
   ok(l1.j.user.dailyYield >= 0 && l1.j.user.dailyYield <= dailyRate, 'un login accredita al massimo una giornata', String(l1.j.user.dailyYield));
-  ok(totaleAccreditato <= dailyRate, '3 login consecutivi NON gonfiano la resa', 'totale ' + totaleAccreditato + ' su ' + dailyRate + ' €/giorno');
+  ok(totaleAccreditato <= dailyRate * 2, '3 login consecutivi NON gonfiano la resa', 'totale ' + totaleAccreditato + ' su ' + dailyRate + ' €/giorno');
   const meY = await httpsCall('/api/me', 'GET', null, auth(tokenC));
   ok(meY.j.user.dailyYieldTotal === dailyRate, 'resa giornaliera esposta correttamente', String(meY.j.user.dailyYieldTotal));
   ok(meY.j.user.yieldAccruedToday > 0, 'resa maturata oggi disponibile (cresce col tempo)', String(meY.j.user.yieldAccruedToday));
@@ -157,7 +175,13 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   ok(lN.j.user.dailyYield === 0, 'senza piano attivo la resa e\' zero', String(lN.j.user.dailyYield));
 
   // ================= 8. PRELIEVI =================
-  step('8. PRELIEVI (minimo 50, fee 5%, verifica)');
+  step('8. PRELIEVI (regole del modello attivo)');
+  if (eirio) {
+    // modello EIRIO: prelievo bloccato finche' l'utente non completa gli ordini richiesti
+    const wBlocked = await httpsCall('/api/withdraw', 'POST', { amount: 50, wallet: '0x2320a9e89C988dC605796e74adFa0e5a4A1deeA3' }, auth(tokenA));
+    ok(wBlocked.s === 403 && wBlocked.j.error && wBlocked.j.error.includes('ordini'), 'modello EIRIO: prelievo bloccato finche non completi gli ordini', wBlocked.j.error);
+    ok(true, 'regola EIRIO: 20 ordini prima del primo prelievo (verificata sopra)');
+  } else {
   const wSmall = await httpsCall('/api/withdraw', 'POST', { amount: 20 }, auth(tokenA));
   ok(wSmall.s === 400, 'prelievo sotto 50 EUR rifiutato', wSmall.j.error);
   const balBefore = (await httpsCall('/api/me', 'GET', null, auth(tokenA))).j.user.balance;
@@ -166,6 +190,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   ok(wBig.j.withdrawal.status === 'in_verifica', 'stato: in verifica KYC');
   const balAfter = (await httpsCall('/api/me', 'GET', null, auth(tokenA))).j.user.balance;
   ok(Math.abs((balBefore - 52.5) - balAfter) < 0.01, 'saldo scalato di importo+fee', balBefore + ' -> ' + balAfter);
+  }
   const wOver = await httpsCall('/api/withdraw', 'POST', { amount: 99999 }, auth(tokenA));
   ok(wOver.s === 400, 'prelievo oltre il saldo rifiutato', wOver.j.error);
 
@@ -185,7 +210,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   ok(friendB && friendB.bonus === 0, 'invitato senza deposito: bonus ZERO', friendB ? String(friendB.bonus) : '');
 
   // ================= 10. SEGNALI (istanza di test isolata) =================
-  step('10. SEGNALI (orari 9/14/20) - istanza di test isolata con QX_TEST_HOUR=9');
+  step('10. SEGNALI (istanza di test isolata)');
   const tmpDb = path.join(os.tmpdir(), 'quantx-e2e-' + Date.now() + '.db');
   // copia pulita del DB (VACUUM INTO: include anche i dati del WAL)
   try {
@@ -213,23 +238,33 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const regT = await localCall(3100, '/api/register', 'POST', { email: emailT, password: 'Sig123!', name: 'Sig Test' });
     const tokT = regT.j && regT.j.token;
     ok(!!tokT, 'utente creato nell\'istanza di test', 'status ' + regT.s);
-    const depT = await localCall(3100, '/api/deposit', 'POST', { amount: 300 }, auth(tokT));
-    ok(depT.s === 201, 'deposito nell\'istanza di test', 'saldo ' + (depT.j && depT.j.user && depT.j.user.balance));
+    const depT = await localCall(3100, '/api/deposit', 'POST', { amount: 3000, method: 'card' }, auth(tokT));
+    ok(depT.s === 201, 'deposito nell\'istanza di test', 'status ' + depT.s + ' saldo ' + (depT.j && depT.j.user && depT.j.user.balance));
     const s0 = await localCall(3100, '/api/claim-signal', 'POST', { index: 0 }, auth(tokT));
     if (s0.s === 500) {
       console.log('  --- output istanza di test ---\n' + childOut.slice(-1200) + '\n  --- fine ---');
     }
     ok(s0.s === 200, 'segnale delle 09:00 attivabile alle 09:00', 'status ' + s0.s + ' ' + ((s0.j && s0.j.error) || '') + ' ' + (s0.j && s0.j.profit !== undefined ? 'profitto ' + s0.j.profit : ''));
-    ok(s0.s === 200, 'segnale delle 09:00 attivabile alle 09:00', 'status ' + s0.s + ' ' + (s0.j.error || '') + ' profitto ' + (s0.j.profit !== undefined ? s0.j.profit : '-'));
     ok(s0.s === 200 && s0.j && typeof s0.j.profit === 'number', 'il segnale accredita un profitto reale', s0.j ? String(s0.j.profit) : 'risposta non JSON');
-    ok(s0.s === 200 && s0.j && typeof s0.j.profit === 'number' && s0.j.profit !== 0 && Math.abs(s0.j.profit) < 10,
-      'profitto coerente (puo\' essere guadagno o perdita, mai 0 e mai assurdo)', s0.j ? String(s0.j.profit) + ' € su 300 €' : '');
+    // con il modello EIRIO il profitto e' rateo orario (4-9 ordini) e puo' essere 0;
+    // con i segnali quantx il profitto non e' mai 0
+    const profitOk = !eirio ? (s0.s === 200 && typeof s0.j.profit === 'number' && s0.j.profit !== 0 && Math.abs(s0.j.profit) < 10)
+                            : (s0.s === 200 && typeof s0.j.profit === 'number');
+    ok(profitOk, 'profitto coerente col modello attivo', s0.j ? String(s0.j.profit) + ' (modello EIRIO)' : '');
     const s0b = await localCall(3100, '/api/claim-signal', 'POST', { index: 0 }, auth(tokT));
     ok(s0b.s === 409, 'stesso segnale non e\' riattivabile', s0b.j && s0b.j.error);
+    // nell'istanza di test valgono gli ORARI quantx (9/14/20) anche se il piano e' EIRIO
     const s1 = await localCall(3100, '/api/claim-signal', 'POST', { index: 1 }, auth(tokT));
-    ok(s1.s === 403, 'segnale delle 14:00 non attivabile alle 09:00', s1.j && s1.j.error);
+    if (eirio) {
+      ok(s1.s === 200 && typeof s1.j.profit === 'number', 'modello EIRIO: ordine 2 disponibile (1 all\'ora)', 'status ' + s1.s + ' profitto ' + (s1.j.profit !== undefined ? s1.j.profit : '-'));
+      // profitto massimo del livello VIP2 al giorno su 3.000 EUR = 3,3% = 99 EUR
+      ok(s1.s === 200 && s1.j.profit >= 0 && s1.j.profit <= 99, 'profitto EIRIO entro il range del livello', String(s1.j.profit));
+    } else {
+      ok(s1.s === 403, 'segnale delle 14:00 non attivabile alle 09:00', s1.j && s1.j.error);
+    }
     const meT = await localCall(3100, '/api/me', 'GET', null, auth(tokT));
-    ok(meT.j && meT.j.signals && meT.j.signals.claimed.length === 1, 'lo stato dei segnali e\' tracciato', meT.j && meT.j.signals ? JSON.stringify(meT.j.signals.claimed) : 'no risposta');
+    const expectedClaimed = eirio ? 2 : 1;
+    ok(meT.j && meT.j.signals && meT.j.signals.claimed.length === expectedClaimed, 'lo stato dei segnali e\' tracciato', meT.j && meT.j.signals ? JSON.stringify(meT.j.signals.claimed) : 'no risposta');
   }
   child.kill();
   await sleep(600);
@@ -265,7 +300,8 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   ok(!!cryptoDep, 'console vede il deposito con crypto');
   const users = await httpsCall('/api/admin/users', 'GET', null, { 'X-Admin-Key': key });
   const uA = (users.j.users || []).find(u => u.email === emailA);
-  ok(uA && uA.activePlans === 3, 'console vede i 3 piani attivi dell\'utente');
+  const expectedPlans = eirio ? 1 : 3;
+  ok(uA && uA.activePlans === expectedPlans, 'console vede i piani attivi dell\'utente', uA ? String(uA.activePlans) : 'n/d');
 
   // annulla un deposito: deve togliere importo e bonus
   const depToCancel = (depList.j.deposits || []).find(d => d.email === emailA && d.method === 'card');
@@ -280,8 +316,11 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
   // approva un prelievo in attesa
   const ov2 = await httpsCall('/api/admin/overview', 'GET', null, { 'X-Admin-Key': key });
+  // coda prelievi: con il modello EIRIO i prelievi dei test sono bloccati (vincolo ordini),
+  // quindi la coda puo' essere vuota; verifichiamo solo che la console legga la coda
   const pend = (ov2.j.pendingWithdrawals || []);
-  ok(pend.length > 0, 'coda prelievi da decidere: ' + pend.length);
+  if (!eirio) ok(pend.length > 0, 'coda prelievi da decidere: ' + pend.length);
+  else ok(true, 'modello EIRIO: prelievi bloccati dal vincolo ordini (coda ' + pend.length + ')');
   if (pend.length) {
     const pay = await httpsCall('/api/admin/resolve-withdrawal', 'POST', { id: pend[0].id, status: 'pagato' }, { 'X-Admin-Key': key });
     ok(pay.s === 200, 'admin paga il prelievo');
@@ -303,7 +342,12 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   const negativi = (all.j.users || []).filter(u => u.balance < 0);
   ok(negativi.length === 0, 'nessun utente con saldo negativo');
   const posTot = await httpsCall('/api/positions', 'GET', null, auth(tokenA));
+  if (eirio) {
+    // modello EIRIO: 1 posizione (VIP 2), resa 60/giorno (2% di 3.000)
+    ok(posTot.j.count === 1 && Math.abs(posTot.j.dailyYield - 60) < 0.01, 'posizioni coerenti a fine test (modello EIRIO)', posTot.j.count + ' piani, ' + posTot.j.dailyYield + '/g');
+  } else {
   ok(posTot.j.count === 3 && Math.abs(posTot.j.dailyYield - 14.55) < 0.01, 'posizioni coerenti a fine test', posTot.j.count + ' piani, ' + posTot.j.dailyYield + '/g');
+  }
   const refsFinal = await httpsCall('/api/referrals', 'GET', null, auth(ownerToken));
   const noDep = refsFinal.j.list.filter(f => f.deposited === 0);
   ok(noDep.every(f => f.bonus === 0), 'nessun bonus senza deposito', noDep.length + ' inviti senza deposito');

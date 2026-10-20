@@ -115,37 +115,36 @@ function migrate() {
   // Il proprietario e' l'admin della piattaforma
   db.prepare('UPDATE users SET is_admin = 1 WHERE email = ?').run(CONFIG.ADMIN_EMAIL);
 
-  // Piani ufficiali (nomi professionali, gli stessi che vede l'utente)
+// Piani ufficiali: con il modello EIRIO attivo sono i VIP 1-6 del documento
+// (importi minimi, range di rendimento, ordini giornalieri e regole di prelievo EIRIO).
+  const eirioRow = db.prepare("SELECT value FROM settings WHERE key = 'plan_model'").get();
+  const upsert = db.prepare(`INSERT INTO plans (id, name, min_deposit, max_deposit, daily_yield_pct, ref_bonus_pct, color, icon)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET name = excluded.name, min_deposit = excluded.min_deposit, max_deposit = excluded.max_deposit,
+      daily_yield_pct = excluded.daily_yield_pct, ref_bonus_pct = excluded.ref_bonus_pct, color = excluded.color, icon = excluded.icon`);
+  if (eirioRow && eirioRow.value === 'eirio') {
+    const eirioPlans = [
+      [1, 'VIP 1', 500, 500, 1.5, 17, '#22d3ee', '⚡'],
+      [2, 'VIP 2', 3000, 3000, 2.0, 17, '#8b5cf6', '📈'],
+      [3, 'VIP 3', 10000, 10000, 2.5, 17, '#f59e0b', '💠'],
+      [4, 'VIP 4', 30000, 30000, 3.0, 17, '#f43f5e', '💎'],
+      [5, 'VIP 5', 100000, 100000, 3.5, 17, '#22ff88', '👑'],
+      [6, 'VIP 6', 1000000, 1000000, 4.0, 17, '#22ff88', '🏆'],
+    ];
+    for (const p of eirioPlans) upsert.run(...p);
+    db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_withdraw_min', '30') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+    db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_fee_pct', '2.5') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+    db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_orders_before_withdrawal', '20') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+    db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_orders_after_withdrawal', '8') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+    db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_payout_hours', '2-96') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+  } else {
   const plans = [
     [1, 'Starter',     10,  99,   3,   10, '#22d3ee', '⚡'],
     [2, 'Pro',         50,  299,  4.5, 12, '#8b5cf6', '📈'],
     [3, 'Elite',       200, 999,  6,   14, '#f59e0b', '💎'],
     [4, 'Quantum VIP', 500, null, 8,   17, '#22ff88', '👑'],
   ];
-  const upsert = db.prepare(`INSERT INTO plans (id, name, min_deposit, max_deposit, daily_yield_pct, ref_bonus_pct, color, icon)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET name = excluded.name, min_deposit = excluded.min_deposit, max_deposit = excluded.max_deposit,
-      daily_yield_pct = excluded.daily_yield_pct, ref_bonus_pct = excluded.ref_bonus_pct, color = excluded.color, icon = excluded.icon`);
   for (const p of plans) upsert.run(...p);
-
-  // Se il modello EIRIO e' attivo (impostazione dell'amministratore), i piani e le
-  // regole operative sono quelli del documento: rendite per livello 1,5%-5,3%,
-  // 4-9 ordini al giorno, commissioni e vincoli di prelievo EIRIO.
-  const modelRow = db.prepare("SELECT value FROM settings WHERE key = 'plan_model'").get();
-  if (modelRow && modelRow.value === 'eirio') {
-    const minDep = { 1: 500, 2: 3000, 3: 10000, 4: 30000, 5: 100000, 6: 1000000 };
-    const icons = { 1: '⚡', 2: '📈', 3: '💠', 4: '💎', 5: '👑', 6: '🏆' };
-    const colors = { 1: '#22d3ee', 2: '#8b5cf6', 3: '#f59e0b', 4: '#f43f5e', 5: '#22ff88', 6: '#22ff88' };
-    for (const lvl of Object.keys(PLAN_MODEL_EIRIO.ORDERS_PER_DAY)) {
-      const n = parseInt(lvl, 10);
-      upsert.run(n, 'VIP ' + n, minDep[n], minDep[n], PLAN_MODEL_EIRIO.PROFIT_MIN[n], PLAN_MODEL_EIRIO.TEAM_BONUS_PCT[1], colors[n], icons[n]);
-    }
-    // Le impostazioni operative riflettono i vincoli EIRIO (solo per visualizzazione in console)
-    db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_withdraw_min', '30') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
-    db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_fee_pct', '2.5') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
-    db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_orders_before_withdrawal', '20') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
-    db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_orders_after_withdrawal', '8') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
-    db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_payout_hours', '2-96') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
   }
 
   db.exec('CREATE INDEX IF NOT EXISTS idx_users_referred_by ON users(referred_by)');
@@ -542,7 +541,7 @@ app.post('/api/claim-signal', auth, (req, res) => {
     if (isNaN(i) || i < 0 || i >= maxIndex) return res.status(400).json({ error: 'Ordine non valido' });
     const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
     const hoursElapsed = Math.max(1, Math.floor((Date.now() - dayStart.getTime()) / 3600000));
-    const ordersAllowed = Math.min(maxIndex, maxIndex * hoursElapsed / 24);
+    const ordersAllowed = Math.min(maxIndex, Math.floor(maxIndex * hoursElapsed / 24));
     const row = ensureSignals(req.uid);
     const claimed = JSON.parse(row.claimed);
     const profits = JSON.parse(row.profits);
