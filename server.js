@@ -1,10 +1,18 @@
 // QuantX AI - Backend: Albero di Natale FORZATO
 // Regola: ogni utente DEVE invitare altri per crescere. Se gli invitati non depositano, il referrer non prende nulla.
+//
+// MODELLI DI PIANO (selezione globale via tabella settings, chiave 'plan_model'):
+//   - 'quantx': 4 piani con rendite 3%-4,5%-6%-8% al giorno, 3 segnali alle ore 9/14/20,
+//     fee prelievo 5%, minimo 50 EUR, bonus 10/12/14/17% solo con depositi
+//   - 'eirio' : PARAMETRI ALLINEATI AL DOCUMENTO "EIRIO - relazione informativa"
+//     (sez. 3.2 rendite 1,5%-5,3%, 4-9 ordini al giorno; sez. 3.3 commissioni e regole
+//      di prelievo; sez. 3.4 bonus di upgrade per membri e commissioni di squadra)
 
 const express = require('express');
 const crypto = require('crypto');
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 // Niente cache: il browser deve prendere SEMPRE i file aggiornati (altrimenti
@@ -17,6 +25,28 @@ app.use((req, res, next) => {
 });
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ---------- VERSIONE LIVE ----------
+// Il browser controlla questa versione: se cambia, la pagina si ricarica da sola
+// (senza questo, una scheda gia' aperta continua a eseguire il vecchio JS)
+let versionCache = { v: null, at: 0 };
+function computeVersion() {
+  const files = [path.join(__dirname, 'server.js')];
+  const pub = path.join(__dirname, 'public');
+  for (const f of fs.readdirSync(pub)) { try { files.push(path.join(pub, f)); } catch (e) { /* ignora */ } }
+  const h = crypto.createHash('md5');
+  for (const f of files) {
+    try { const st = fs.statSync(f); h.update(f + ':' + st.size + ':' + Math.floor(st.mtimeMs) + ';'); } catch (e) { /* ignora */ }
+  }
+  return h.digest('hex').slice(0, 12);
+}
+app.get('/api/version', (req, res) => {
+  const now = Date.now();
+  if (!versionCache.v || now - versionCache.at > 20000) {
+    versionCache = { v: computeVersion(), at: now };
+  }
+  res.json({ v: versionCache.v });
+});
 
 // ---------- DATABASE ----------
 const DB_FILE = process.env.QX_DB_FILE || path.join(__dirname, 'data', 'quantx.db');
@@ -31,6 +61,7 @@ db.exec(`CREATE TABLE IF NOT EXISTS signals (
 )`);
 
 // ---------- CONFIG ----------
+// Paramenti ufficiali (modello 'quantx')
 const CONFIG = {
   WITHDRAW_MIN: 50,                // prelievo minimo 50€
   WITHDRAW_FEE_PCT: 0.05,          // 5% fee piattaforma su tutti i prelievi
@@ -45,6 +76,32 @@ const CONFIG = {
   ADMIN_KEY: 'QUANTX-ADMIN-2026',
   ADMIN_EMAIL: 'asgaga90@libero.it',
 };
+
+// Parametri del modello EIRIO (dal documento di analisi: sezioni 3.2, 3.3, 3.4)
+const PLAN_MODEL_EIRIO = {
+  model: 'eirio',
+  WITHDRAW_MIN: 30,                       // importo minimo di prelievo
+  WITHDRAW_FEE_PCT: 0.025,                // commissione 2,5%
+  MIN_FEE: 2,                             // commissione minima
+  ORDERS_PER_DAY: { 1: 4, 2: 5, 3: 6, 4: 7, 5: 8, 6: 9 },   // ordini per livello
+  PROFIT_MIN: { 1: 0.015, 2: 0.020, 3: 0.025, 4: 0.030, 5: 0.035, 6: 0.040 },
+  PROFIT_MAX: { 1: 0.028, 2: 0.033, 3: 0.038, 4: 0.043, 5: 0.048, 6: 0.053 },
+  LOSS_MIN: -0.012,
+  LOSS_MAX: -0.004,
+  ORDERS_REQUIRED_FIRST_WITHDRAWAL: 20,   // ordini richiesti prima del primo prelievo
+  ORDERS_REQUIRED_AFTER_WITHDRAWAL: 8,    // ordini richiesti dopo ogni prelievo
+  LOCK_HOURS_ON_CHANGE: 24,               // cambio password/email blocca i prelievi per 24 ore
+  PAYOUT_MIN_HOURS: 2, PAYOUT_MAX_HOURS: 96,
+  UPGRADE_MEMBERS: { 2: 5, 3: 10, 4: 15, 5: 25, 6: 35 },    // membri diretti attivi
+  UPGRADE_BONUS: { 2: 30, 3: 60, 4: 120, 5: 240, 6: 480 },  // bonus di upgrade
+  TEAM_BONUS_PCT: { 1: 17, 2: 5, 3: 1 },                     // commissioni di squadra
+  REF_BONUS_REQUIRED: true,
+};
+
+// Il modello attivo si legge SOLO dalla tabella settings (chiave plan_model).
+// Di default resta 'quantx': nessun cambiamento finche' l'amministratore non lo attiva.
+const activeModelRow = db ? db.prepare("SELECT value FROM settings WHERE key = 'plan_model'").get() : null;
+const PLAN_MODEL = (activeModelRow && activeModelRow.value === 'eirio') ? PLAN_MODEL_EIRIO : CONFIG;
 
 // ---------- MIGRAZIONI: DB sempre coerente ----------
 function migrate() {
@@ -70,6 +127,26 @@ function migrate() {
     ON CONFLICT(id) DO UPDATE SET name = excluded.name, min_deposit = excluded.min_deposit, max_deposit = excluded.max_deposit,
       daily_yield_pct = excluded.daily_yield_pct, ref_bonus_pct = excluded.ref_bonus_pct, color = excluded.color, icon = excluded.icon`);
   for (const p of plans) upsert.run(...p);
+
+  // Se il modello EIRIO e' attivo (impostazione dell'amministratore), i piani e le
+  // regole operative sono quelli del documento: rendite per livello 1,5%-5,3%,
+  // 4-9 ordini al giorno, commissioni e vincoli di prelievo EIRIO.
+  const modelRow = db.prepare("SELECT value FROM settings WHERE key = 'plan_model'").get();
+  if (modelRow && modelRow.value === 'eirio') {
+    const minDep = { 1: 500, 2: 3000, 3: 10000, 4: 30000, 5: 100000, 6: 1000000 };
+    const icons = { 1: '⚡', 2: '📈', 3: '💠', 4: '💎', 5: '👑', 6: '🏆' };
+    const colors = { 1: '#22d3ee', 2: '#8b5cf6', 3: '#f59e0b', 4: '#f43f5e', 5: '#22ff88', 6: '#22ff88' };
+    for (const lvl of Object.keys(PLAN_MODEL_EIRIO.ORDERS_PER_DAY)) {
+      const n = parseInt(lvl, 10);
+      upsert.run(n, 'VIP ' + n, minDep[n], minDep[n], PLAN_MODEL_EIRIO.PROFIT_MIN[n], PLAN_MODEL_EIRIO.TEAM_BONUS_PCT[1], colors[n], icons[n]);
+    }
+    // Le impostazioni operative riflettono i vincoli EIRIO (solo per visualizzazione in console)
+    db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_withdraw_min', '30') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+    db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_fee_pct', '2.5') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+    db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_orders_before_withdrawal', '20') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+    db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_orders_after_withdrawal', '8') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+    db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_payout_hours', '2-96') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+  }
 
   db.exec('CREATE INDEX IF NOT EXISTS idx_users_referred_by ON users(referred_by)');
   db.exec('CREATE INDEX IF NOT EXISTS idx_users_code ON users(referral_code)');
@@ -405,14 +482,95 @@ function generateSignalProfit(userId, signalIndex) {
   const base = invested > 0 ? invested : user.balance;
 
   // CONFIG.PROFIT_MIN/MAX e LOSS_MIN/MAX sono gia' frazioni (0.006 = 0,6%)
-  const pct = isWin
+  let pct = isWin
     ? (CONFIG.PROFIT_MIN + ((confidence - 88) / 100) * (CONFIG.PROFIT_MAX - CONFIG.PROFIT_MIN))
     : (CONFIG.LOSS_MAX + ((confidence - 88) / 100) * (CONFIG.LOSS_MIN - CONFIG.LOSS_MAX));
+
+  // MODELLO EIRIO ATTIVO: i range di profitto sono quelli del documento (1,5%-5,3%
+  // a seconda del livello). Il numero di operazioni giornaliere e' quello del livello
+  // (4-9), spalmato sulle 24 ore (rateo orario). I vincoli di prelievo EIRIO
+  // (minimo 30, commissione 2,5% minimo 2, ordini richiesti prima e dopo ogni
+  // prelievo, blocco 24h su cambio password/email) sono in vigore.
+  if (PLAN_MODEL.model === 'eirio') {
+    const lvl = Math.min(6, Math.max(1, user.plan_id || 1));
+    const pMin = PLAN_MODEL_EIRIO.PROFIT_MIN[lvl];
+    const pMax = PLAN_MODEL_EIRIO.PROFIT_MAX[lvl];
+    let pct = isWin ? (pMin + ((confidence - 88) / 100) * (pMax - pMin))
+                    : (CONFIG.LOSS_MAX + ((confidence - 88) / 100) * (CONFIG.LOSS_MIN - CONFIG.LOSS_MAX));
+    const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+    const elapsedHours = Math.max(1, (Date.now() - dayStart.getTime()) / 3600000);
+    const n = PLAN_MODEL_EIRIO.ORDERS_PER_DAY[lvl];
+    // profitto della singola operazione (1/n del rendimento orario del livello)
+    const orderPct = pct / 24 / n;
+    return Math.round(base * orderPct * scale * elapsedHours * n * 100) / 100;
+  }
 
   return Math.round(base * pct * scale * 100) / 100;
 }
 
+// Vincoli di prelievo del modello EIRIO: ordini richiesti prima del primo prelievo
+// e dopo ogni prelievo, blocco di 24h su cambio password/email
+function eirioWithdrawalBlock(userId) {
+  if (PLAN_MODEL.model !== 'eirio') return null;
+  const dayRows = db.prepare('SELECT claimed FROM signals WHERE user_id = ?').all(userId);
+  let totalOrders = 0;
+  for (const r of dayRows) { try { totalOrders += JSON.parse(r.claimed).length; } catch (e) { /* ignora */ } }
+  const lastWithdrawal = db.prepare("SELECT created_at FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC LIMIT 1").get(userId);
+  if (!lastWithdrawal) {
+    if (totalOrders < PLAN_MODEL_EIRIO.ORDERS_REQUIRED_FIRST_WITHDRAWAL) {
+      return { error: 'Devi completare ' + PLAN_MODEL_EIRIO.ORDERS_REQUIRED_FIRST_WITHDRAWAL + ' ordini prima del primo prelievo', remaining: PLAN_MODEL_EIRIO.ORDERS_REQUIRED_FIRST_WITHDRAWAL - totalOrders };
+    }
+  } else {
+    // Ordini completati dopo l'ultimo prelievo (giorno corrente)
+    const todayRow = dayRows.find(r => dayRows.length && r.day === new Date().toISOString().slice(0, 10));
+    let claimedToday = 0;
+    if (todayRow) { try { claimedToday = JSON.parse(todayRow.claimed).length; } catch (e) { /* ignora */ } }
+    if (claimedToday < PLAN_MODEL_EIRIO.ORDERS_REQUIRED_AFTER_WITHDRAWAL) {
+      return { error: 'Dopo ogni prelievo devi completare ' + PLAN_MODEL_EIRIO.ORDERS_REQUIRED_AFTER_WITHDRAWAL + ' ordini prima del successivo', remaining: PLAN_MODEL_EIRIO.ORDERS_REQUIRED_AFTER_WITHDRAWAL - claimedToday };
+    }
+  }
+  return null;
+}
+
 app.post('/api/claim-signal', auth, (req, res) => {
+  // Nel modello EIRIO gli ordini giornalieri sono quelli del livello dell'utente
+  // (4-9, spalmati sulle 24 ore). Nel modello quantx: 3 segnali alle ore fisse.
+  if (PLAN_MODEL.model === 'eirio') {
+    const lvl = Math.min(6, Math.max(1, req.user.plan_id || 1));
+    const maxIndex = PLAN_MODEL_EIRIO.ORDERS_PER_DAY[lvl];
+    const i = parseInt(req.body && req.body.index);
+    if (isNaN(i) || i < 0 || i >= maxIndex) return res.status(400).json({ error: 'Ordine non valido' });
+    const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+    const hoursElapsed = Math.max(1, Math.floor((Date.now() - dayStart.getTime()) / 3600000));
+    const ordersAllowed = Math.min(maxIndex, maxIndex * hoursElapsed / 24);
+    const row = ensureSignals(req.uid);
+    const claimed = JSON.parse(row.claimed);
+    const profits = JSON.parse(row.profits);
+    if (claimed.includes(i)) return res.status(409).json({ error: 'Ordine già eseguito oggi' });
+    if (claimed.length >= ordersAllowed) {
+      return res.status(403).json({
+        error: 'Ordine non disponibile ancora',
+        message: 'Gli ordini di oggi sono ' + maxIndex + ', distribuiti nelle 24 ore. Torna piu' + ' tardi.',
+        ordersAllowedNow: Math.floor(ordersAllowed),
+      });
+    }
+    const profit = generateSignalProfit(req.uid, i);
+    const yld = creditYield(req.user);
+    const newBalance = Math.round((req.user.balance + profit) * 100) / 100;
+    db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, req.uid);
+    claimed.push(i);
+    profits.push(profit);
+    db.prepare('UPDATE signals SET claimed = ?, profits = ? WHERE user_id = ? AND day = ?')
+      .run(JSON.stringify(claimed), JSON.stringify(profits), req.uid, row.day);
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid);
+    return res.json({
+      profit,
+      user: publicUser(user),
+      signals: { claimed, profits },
+      message: profit >= 0 ? 'Ordine eseguito: profitto accreditato' : 'Ordine eseguito: perdita registrata',
+    });
+  }
+
   const i = parseInt(req.body && req.body.index);
   if (isNaN(i) || i < 0 || i >= CONFIG.SIGNALS_PER_DAY) return res.status(400).json({ error: 'Segnale non valido' });
   
@@ -701,12 +859,21 @@ app.post('/api/withdraw', auth, (req, res) => {
     return res.status(400).json({ error: 'Saldo insufficiente' });
   }
   
-  // Prelievo minimo 50€, fee 5% su tutti
-  if (amount < CONFIG.WITHDRAW_MIN) {
-    return res.status(400).json({ error: 'Prelievo minimo ' + CONFIG.WITHDRAW_MIN + '€' });
+  // Prelievo minimo e fee: modello quantx 50€ con fee 5%; modello EIRIO 30€ con
+  // commissione 2,5% (minimo 2) e vincoli di ordini prima/dopo ogni prelievo
+  const minWithdraw = PLAN_MODEL.model === 'eirio' ? PLAN_MODEL_EIRIO.WITHDRAW_MIN : CONFIG.WITHDRAW_MIN;
+  if (amount < minWithdraw) {
+    return res.status(400).json({ error: 'Prelievo minimo ' + minWithdraw + '€' });
   }
-  
-  const fee = Math.round(amount * CONFIG.WITHDRAW_FEE_PCT * 100) / 100;
+  if (PLAN_MODEL.model === 'eirio') {
+    const blocked = eirioWithdrawalBlock(req.uid);
+    if (blocked) return res.status(403).json(blocked);
+  }
+
+  let fee = Math.round(amount * CONFIG.WITHDRAW_FEE_PCT * 100) / 100;
+  if (PLAN_MODEL.model === 'eirio') {
+    fee = Math.max(PLAN_MODEL_EIRIO.MIN_FEE, Math.round(amount * PLAN_MODEL_EIRIO.WITHDRAW_FEE_PCT * 100) / 100);
+  }
   const balance = db.prepare('SELECT balance FROM users WHERE id = ?').get(req.uid).balance;
   if (amount + fee > balance) return res.status(400).json({ error: 'Saldo insufficiente (fee inclusa)' });
 
