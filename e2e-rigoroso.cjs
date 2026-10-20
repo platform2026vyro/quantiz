@@ -257,8 +257,9 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const s1 = await localCall(3100, '/api/claim-signal', 'POST', { index: 1 }, auth(tokT));
     if (eirio) {
       ok(s1.s === 200 && typeof s1.j.profit === 'number', 'modello EIRIO: ordine 2 disponibile (1 all\'ora)', 'status ' + s1.s + ' profitto ' + (s1.j.profit !== undefined ? s1.j.profit : '-'));
-      // profitto massimo del livello VIP2 al giorno su 3.000 EUR = 3,3% = 99 EUR
-      ok(s1.s === 200 && s1.j.profit >= 0 && s1.j.profit <= 99, 'profitto EIRIO entro il range del livello', String(s1.j.profit));
+      // il profitto di un ordine e' il rateo orario del range del livello VIP2 (puo' essere
+      // un guadagno OR una perdita, come nel trading reale): entro +-3,3% di 3.000 EUR in 2 ore
+      ok(s1.s === 200 && Math.abs(s1.j.profit) <= Math.round(3000 * 0.033 * 2 * 100) / 100, 'profitto EIRIO entro il range del livello', String(s1.j.profit));
     } else {
       ok(s1.s === 403, 'segnale delle 14:00 non attivabile alle 09:00', s1.j && s1.j.error);
     }

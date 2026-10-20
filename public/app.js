@@ -277,13 +277,52 @@ function addAdminLink() {
 }
 
 // ---------- GIOCATE (3 segnali/giorno ad orari precisi) ----------
+// Con il modello EIRIO attivo: N ordini al giorno in base al livello (4-9),
+// un ordine disponibile ogni ora, 24 ore su 24.
 async function renderSignals(data) {
   const sig = data.signals;
   const labels = ['Segnale Alpha', 'Segnale Beta', 'Segnale Gamma'];
   const conf = ['96.2%', '94.8%', '92.1%'];
   const hours = [9, 14, 20]; // ore in cui i segnali sono disponibili
   const currentHour = new Date().getHours();
-  
+
+  // livello EIRIO (se attivo): ordini e confidenza per livello
+  const EIRIO_ORDERS = { 1: 4, 2: 5, 3: 6, 4: 7, 5: 8, 6: 9 };
+  const EIRIO_CONF = { 1: '96.2%', 2: '95.6%', 3: '95.1%', 4: '94.5%', 5: '93.8%', 6: '93.2%' };
+  const lvl = data.user && data.user.plan;
+  const isEirio = data.user && (lvl === 1 || lvl === 2 || lvl === 3 || lvl === 4 || lvl === 5 || lvl === 6)
+    && (data.user.planName || '').toUpperCase().startsWith('VIP');
+
+  if (isEirio) {
+    const n = EIRIO_ORDERS[lvl] || 4;
+    const now = new Date();
+    const ordersAllowed = Math.max(1, Math.floor(((now.getHours() + 1) * 60 + now.getMinutes()) * n / 1440));
+    const claimed = sig.claimed || [];
+    const gainedTotal = (sig.profits || []).reduce((a, b) => a + (b || 0), 0);
+    $('signal-count').textContent = claimed.length + '/' + n + ' ordini eseguiti';
+    const note = document.getElementById('signals-note');
+    if (note) note.textContent = 'Ordini giornalieri del tuo livello: ' + n + ' · un ordine disponibile ogni ora, 24 ore su 24 · profitto del livello ' + (EIRIO_CONF[lvl] || '93%');
+    const rows = [];
+    for (let i = 0; i < n; i++) {
+      const done = claimed.includes(i);
+      const canDo = !done && i < ordersAllowed;
+      rows.push('<div class="signal ' + (done ? 'active' : '') + '">' +
+        '<div class="info"><h4>Ordine di arbitraggio #' + (i + 1) + '</h4>' +
+        '<div class="meta">Confidenza ' + (EIRIO_CONF[lvl] || '93%') + ' · ' +
+        (done ? '<span class="win">' + fmt((sig.profits || [])[claimed.indexOf(i)] || 0) + '</span>'
+              : canDo ? 'Disponibile ora' : 'In attesa...') +
+        '</div></div>' +
+        '<button class="btn ' + (done ? 'btn-ghost' : 'btn-green') + '" ' + (done || !canDo ? 'disabled' : '') + ' onclick="claimSignal(' + i + ', this)">' +
+        (done ? '✓ Eseguito' : canDo ? 'Esegui ordine' : 'In attesa...') +
+        '</button></div>');
+    }
+    $('signals').innerHTML = rows.join('') +
+      '<div class="signal" style="background:transparent; border-style:dashed">' +
+        '<div class="info"><h4>Ordini di oggi</h4><div class="meta">' + n + ' ordini · ' +
+        (claimed.length) + ' eseguiti · ' + fmt(gainedTotal) + ' di profitto oggi</div></div>';
+    return;
+  }
+
   $('signal-count').textContent = `${sig.claimed.length}/3 attivati`;
   $('signals').innerHTML = labels.map((lab, i) => {
     const claimed = sig.claimed.includes(i);
