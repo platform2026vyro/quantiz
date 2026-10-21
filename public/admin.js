@@ -1,8 +1,13 @@
 // QuantX - Console admin: depositi, prelievi, utenti. Aggiornamento automatico.
 const KEY = 'quantx_admin_key';
 const $ = (id) => document.getElementById(id);
-const fmt = (n) => '€' + Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmt0 = (n) => (Number(n || 0) < 0 ? '-' : '') + '€' + Math.abs(Number(n || 0)).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+const fmt = (n) => '€' + itNum(n, 2);
+const fmt0 = (n) => (Number(n || 0) < 0 ? '-' : '') + '€' + itNum(Math.abs(Number(n || 0)), 0);
+const itNum = (n, d = 0) => {
+  const fixed = Number(n || 0).toFixed(d);
+  const parts = fixed.split('.');
+  return parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (parts[1] ? ',' + parts[1] : '');
+};
 const dt = (s) => new Date(String(s).replace(' ', 'T') + 'Z').toLocaleString('it-IT');
 
 let currentTab = 'panoramica';
@@ -39,7 +44,7 @@ async function adminLogin(btn) {
 
   btn.disabled = true;
   const old = btn.textContent;
-  btn.textContent = '⏳ Accesso...';
+  btn.textContent = 'Accesso...';
 
   const data = await fetch('/api/admin/login', {
     method: 'POST',
@@ -187,11 +192,11 @@ async function loadUsers() {
 
 async function setBalance(id, btn) {
   const val = $(`nb-${id}`).value;
-  btn.disabled = true; btn.textContent = '⏳';
+  btn.disabled = true; btn.textContent = '...';
   const data = await api('/api/admin/set-balance', { method: 'POST', body: JSON.stringify({ id, balance: val }) });
   btn.disabled = false; btn.textContent = 'Aggiorna';
   if (data.error) return toast(data.error);
-  toast('✅ Saldo aggiornato a ' + fmt(data.user.balance));
+  toast('Saldo aggiornato a ' + fmt(data.user.balance));
   loadUsers();
 }
 
@@ -200,20 +205,20 @@ async function depStatus(id, status, btn) {
   const data = await api('/api/admin/deposit-status', { method: 'POST', body: JSON.stringify({ id, status }) });
   btn.disabled = false;
   if (data.error) return toast(data.error);
-  toast('✅ Deposito ' + data.status);
+  toast('Deposito ' + data.status);
   refreshAll();
 }
 
 async function resolve(id, btn) {
-  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
   const data = await api('/api/admin/resolve-withdrawal', { method: 'POST', body: JSON.stringify({ id, status: 'pagato' }) });
   if (data.error) { if (btn) btn.disabled = false; return toast(data.error); }
-  toast('✅ Prelievo pagato');
+  toast('Prelievo pagato');
   refreshAll();
 }
 
 async function reject(id, btn) {
-  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
   const data = await api('/api/admin/resolve-withdrawal', { method: 'POST', body: JSON.stringify({ id, status: 'respinto' }) });
   if (data.error) { if (btn) btn.disabled = false; return toast(data.error); }
   toast('Prelievo respinto');

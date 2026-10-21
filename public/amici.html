@@ -3,71 +3,75 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QuantX AI — Amici e Bonus</title>
+  <title>QuantX AI — Programma di affiliazione</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
     <nav class="nav">
       <div class="logo" onclick="location.href='index.html'">QUANT<span>X</span> AI</div>
-      <div id="nav-links" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
-        <a href="app.html" class="btn btn-ghost" style="text-decoration:none">Dashboard</a>
+      <div id="nav-links" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+        <a href="app.html" class="btn btn-ghost" style="text-decoration:none">Area riservata</a>
         <a href="plans.html" class="btn btn-ghost" style="text-decoration:none">Piani</a>
         <button class="btn btn-ghost" onclick="logout()">Esci</button>
       </div>
     </nav>
 
-    <section class="hero" style="padding:40px 20px 20px">
-      <div class="badge">🤝 Programma Amici QuantX</div>
-      <h1>Invita i tuoi <span class="grad">amici</span> e guadagna a vita</h1>
-      <p>Per ogni amico che si registra con il tuo link e <b>deposita</b> sui piani QuantX, ricevi un bonus immediato <b>dal 10% al 17%</b> del suo deposito. Il bonus si sblocca solo quando il tuo amico investe davvero.</p>
+    <section class="hero" style="padding:44px 0 26px; text-align:left">
+      <div class="badge">Programma di affiliazione</div>
+      <h1 style="font-size:clamp(30px,4vw,44px)">La tua rete, <span class="grad">le tue commissioni</span></h1>
+      <p style="margin:0; max-width:720px">
+        Le commissioni di rete sono riconosciute sui versamenti confermati degli utenti collegati al tuo codice:
+        17% di primo livello, 5% di secondo, 1% di terzo. Nessun compenso matura in assenza di versamenti.
+      </p>
     </section>
 
     <div class="stats-grid">
-      <div class="card stat-card"><div class="num" id="st-total">0</div><div class="label">Amici invitati</div></div>
-      <div class="card stat-card"><div class="num" id="st-active">0</div><div class="label">Amici attivi (che hanno depositato)</div></div>
-      <div class="card stat-card"><div class="num" id="st-earned">€0</div><div class="label">Bonus guadagnato</div></div>
-      <div class="card stat-card"><div class="num" id="st-code">—</div><div class="label">Il tuo codice invito</div></div>
+      <div class="card stat-card"><div class="num" id="st-total">0</div><div class="label">Contatti collegati</div></div>
+      <div class="card stat-card"><div class="num" id="st-active">0</div><div class="label">Attivi (con versamento)</div></div>
+      <div class="card stat-card"><div class="num" id="st-earned">€0</div><div class="label">Commissioni maturate</div></div>
+      <div class="card stat-card"><div class="num" id="st-code">—</div><div class="label">Codice invito</div></div>
     </div>
 
-    <div class="card" style="margin-bottom:24px">
-      <h3 style="margin-bottom:12px">🔗 Il tuo link personale</h3>
-      <p style="color:var(--muted); font-size:14px; margin-bottom:14px">Chi si registra da questo link diventa parte della tua rete: ogni suo deposito ti paga un bonus.</p>
+    <div class="card" style="margin-bottom:20px">
+      <h3 style="font-size:16px; font-weight:600; margin-bottom:10px">Link personale</h3>
+      <p style="color:var(--muted); font-size:13.5px; margin-bottom:12px">Chi si registra da questo link viene associato al tuo codice.</p>
       <div class="ref-link-box">
         <span id="ref-link">—</span>
-        <button class="btn btn-primary" style="padding:10px 18px; font-size:14px" onclick="copyRef()">Copia</button>
+        <button class="btn btn-ghost" style="padding:8px 14px; font-size:13px" onclick="copyRef()">Copia</button>
       </div>
-      <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap">
-        <button class="btn btn-green" style="padding:12px 18px" onclick="share('wa')">📲 Condividi su WhatsApp</button>
-        <button class="btn btn-ghost" style="padding:12px 18px" onclick="share('tg')">✈️ Condividi su Telegram</button>
-        <button class="btn btn-ghost" style="padding:12px 18px" onclick="share('sms')">💬 Invia via SMS</button>
+      <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap">
+        <button class="btn btn-primary" style="padding:9px 16px; font-size:13px" onclick="share('wa')">WhatsApp</button>
+        <button class="btn btn-ghost" style="padding:9px 16px; font-size:13px" onclick="share('tg')">Telegram</button>
+        <button class="btn btn-ghost" style="padding:9px 16px; font-size:13px" onclick="share('sms')">SMS</button>
       </div>
-      <p id="invite-text" style="color:var(--muted); font-size:13px; margin-top:14px; line-height:1.6"></p>
+      <p id="invite-text" style="color:var(--muted); font-size:12.5px; margin-top:14px; line-height:1.6"></p>
     </div>
 
-    <div class="card" style="margin-bottom:24px">
-      <h3 style="margin-bottom:16px">👥 I tuoi amici</h3>
+    <div class="card" style="margin-bottom:20px">
+      <h3 style="font-size:16px; font-weight:600; margin-bottom:12px">Contatti collegati</h3>
       <div id="friends-list"><p style="color:var(--muted)">Caricamento...</p></div>
     </div>
 
     <div class="card" style="margin-bottom:40px">
-      <h3 style="margin-bottom:16px">❓ Come funziona</h3>
-      <div class="signal" style="margin-bottom:12px">
-        <div class="info"><h4>1. Condividi il tuo link</h4><div class="meta">Invialo a chi vuoi. Ogni persona che si registra entra nella tua rete.</div></div>
+      <h3 style="font-size:16px; font-weight:600; margin-bottom:14px">Come funziona</h3>
+      <div class="signal" style="margin-bottom:10px">
+        <div class="info"><h4>1. Condivisione del link</h4><div class="meta">Ogni registrazione dal tuo link viene associata al tuo codice invito.</div></div>
       </div>
-      <div class="signal" style="margin-bottom:12px">
-        <div class="info"><h4>2. Il tuo amico attiva un piano</h4><div class="meta">Da €10 con Starter. Più alto è il piano, più alto è il tuo bonus.</div></div>
+      <div class="signal" style="margin-bottom:10px">
+        <div class="info"><h4>2. Versamento del contatto</h4><div class="meta">La commissione matura solo sui versamenti confermati, non sulla semplice registrazione.</div></div>
       </div>
-      <div class="signal" style="margin-bottom:12px">
-        <div class="info"><h4>3. Incassi il bonus</h4><div class="meta">10% Starter · 12% Pro · 14% Elite · 17% Quantum VIP. Accreditato subito sul tuo saldo.</div></div>
+      <div class="signal" style="margin-bottom:10px">
+        <div class="info"><h4>3. Accredito della commissione</h4><div class="meta">17% di primo livello · 5% di secondo livello · 1% di terzo livello. Accreditata sul saldo.</div></div>
       </div>
       <div class="signal">
-        <div class="info"><h4>4. Vale per sempre</h4><div class="meta">Continui a guadagnare sui depositi dei tuoi amici, per sempre.</div></div>
+        <div class="info"><h4>4. Validità</h4><div class="meta">Le commissioni restano valide per tutta la durata del rapporto di affiliazione.</div></div>
       </div>
     </div>
 
     <div class="footer">
-      QuantX AI © 2026 — Programma Amici · I bonus sono accreditati sul saldo della piattaforma
+      <div><b style="color:var(--text)">QuantX AI</b> — Programma di affiliazione.</div>
+      <div>Le commissioni sono accreditate sul saldo della piattaforma e sono soggette alle stesse condizioni di prelievo.</div>
     </div>
   </div>
 

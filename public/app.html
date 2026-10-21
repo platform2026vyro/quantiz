@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QuantX AI — Dashboard</title>
+  <title>QuantX AI — Area riservata</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <!-- ============ AUTH (login/register) ============ -->
   <div id="auth-view" class="auth-wrap" style="display:none">
     <div class="card auth-card">
-      <div class="logo" style="margin-bottom:20px">QUANT<span>X</span> AI</div>
-      <h2 id="auth-title" style="margin-bottom:20px">Accedi al pannello</h2>
+      <div class="logo" style="margin-bottom:22px">QUANT<span>X</span> AI</div>
+      <h2 id="auth-title" style="margin-bottom:18px; font-size:19px; font-weight:600">Accedi all'area riservata</h2>
       <div class="form">
         <div id="reg-name-wrap" style="display:none">
           <label class="label">Nome</label>
-          <input class="input" id="auth-name" placeholder="Il tuo nome" />
+          <input class="input" id="auth-name" placeholder="Nome e cognome" />
         </div>
         <div>
           <label class="label">Email</label>
@@ -26,15 +26,15 @@
           <input class="input" id="auth-pass" type="password" placeholder="••••••••" />
         </div>
         <div id="reg-ref-wrap" style="display:none">
-          <label class="label">Codice invito (chi ti ha segnalato)</label>
+          <label class="label">Codice invito</label>
           <input class="input" id="auth-ref" placeholder="Es. QX0001" />
-          <p style="color:var(--muted); font-size:12px; margin-top:6px">Senza un codice invito non puoi sbloccare i bonus rete.</p>
+          <p style="color:var(--muted); font-size:12px; margin-top:6px">Il codice collega il conto alla rete di affiliazione.</p>
         </div>
-        <button class="btn btn-primary btn-block" id="auth-btn" onclick="doAuth()">Entra ⚡</button>
-        <p id="auth-error" style="color:#ff5c7a; font-size:14px; text-align:center"></p>
-        <p style="text-align:center; font-size:14px; color:var(--muted)">
+        <button class="btn btn-primary btn-block" id="auth-btn" onclick="doAuth()">Accedi</button>
+        <p id="auth-error" style="color:var(--neg); font-size:13.5px; text-align:center"></p>
+        <p style="text-align:center; font-size:13.5px; color:var(--muted)">
           <span id="auth-switch">Non hai un account? </span>
-          <a href="#" onclick="toggleAuth(); return false" style="color:var(--cyan)">Registrati</a>
+          <a href="#" onclick="toggleAuth(); return false" style="color:var(--accent)">Registrati</a>
         </p>
       </div>
     </div>
@@ -44,55 +44,55 @@
   <div id="dash-view" class="container" style="display:none">
     <nav class="nav">
       <div class="logo" onclick="location.href='index.html'">QUANT<span>X</span> AI</div>
-      <div id="nav-links" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+      <div id="nav-links" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
         <a href="plans.html" class="btn btn-ghost" style="text-decoration:none">Piani</a>
-        <a href="amici.html" class="btn btn-ghost" style="text-decoration:none">Amici</a>
-        <div class="streak">🔥 <span id="streak">0</span> giorni di serie</div>
+        <a href="amici.html" class="btn btn-ghost" style="text-decoration:none">Affiliazione</a>
+        <div class="status-pill"><span class="status-dot"></span> Conto attivo</div>
         <button class="btn btn-ghost" onclick="logout()">Esci</button>
       </div>
     </nav>
 
     <div class="balance-box">
-      <div class="label">Saldo totale</div>
+      <div class="label">Saldo disponibile</div>
       <div class="amount" id="balance">€0.00</div>
-      <div class="sub" id="balance-sub">+€0.00 oggi · rendita quantistica attiva</div>
+      <div class="sub" id="balance-sub">Nessun piano attivo</div>
     </div>
 
-    <div id="positions-line" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:-8px 0 20px"></div>
+    <div id="positions-line" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:-6px 0 20px"></div>
 
-    <!-- CARD FIDELTÀ / REFERRAL (in evidenza) -->
+    <!-- PROGRAMMA DI AFFILIAZIONE -->
     <div class="card referral-card" style="margin-bottom:20px">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px">
-        <h3>🤝 Programma Fedeltà</h3>
-        <span class="streak" id="ref-stats" style="font-size:12px">0 amici · +€0.00</span>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px">
+        <h3 style="font-size:16px; font-weight:600">Programma di affiliazione</h3>
+        <span class="badge" id="ref-stats">0 amici · +€0.00</span>
       </div>
-      <p style="color:var(--muted); font-size:14px; margin-bottom:16px; line-height:1.6">
-        Condividi il tuo link: guadagni <b style="color:var(--green)">dal 10% al 17% su ogni deposito</b> dei tuoi invitati. A vita.
+      <p style="color:var(--muted); font-size:13.5px; margin-bottom:14px; line-height:1.65">
+        Commissioni di rete sui versamenti confermati: 17% di primo livello, 5% di secondo, 1% di terzo.
       </p>
       <div class="ref-link-box">
         <span id="ref-link">—</span>
-        <button class="btn btn-primary" style="padding:10px 18px; font-size:14px" onclick="copyRef()">Copia</button>
+        <button class="btn btn-ghost" style="padding:8px 14px; font-size:13px" onclick="copyRef()">Copia</button>
       </div>
       <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap">
-        <button class="btn btn-ghost" style="padding:10px 16px; font-size:14px" onclick="shareRef('wa')">📲 WhatsApp</button>
-        <button class="btn btn-ghost" style="padding:10px 16px; font-size:14px" onclick="shareRef('tg')">✈️ Telegram</button>
-        <a href="amici.html" class="btn btn-green" style="padding:10px 16px; font-size:14px; text-decoration:none">👥 Vedi i tuoi amici →</a>
+        <button class="btn btn-ghost" style="padding:8px 14px; font-size:13px" onclick="shareRef('wa')">WhatsApp</button>
+        <button class="btn btn-ghost" style="padding:8px 14px; font-size:13px" onclick="shareRef('tg')">Telegram</button>
+        <a href="amici.html" class="btn btn-primary" style="padding:8px 14px; font-size:13px; text-decoration:none">Dettaglio rete</a>
       </div>
     </div>
 
     <div class="dash-grid">
       <div>
         <div class="card" style="margin-bottom:20px">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px">
-            <h3>📈 Performance quantistica</h3>
-            <span class="streak" style="font-size:12px">+2.1%/giorno</span>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:16px; flex-wrap:wrap">
+            <h3 style="font-size:16px; font-weight:600">Andamento del portafoglio</h3>
+            <span style="color:var(--muted); font-size:12px">Ultimi 30 giorni</span>
           </div>
           <div class="chart-wrap">
             <svg class="chart-svg" viewBox="0 0 600 220" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#22ff88" stop-opacity="0.5"/>
-                  <stop offset="100%" stop-color="#22ff88" stop-opacity="0"/>
+                  <stop offset="0%" stop-color="#4c8dff" stop-opacity="0.28"/>
+                  <stop offset="100%" stop-color="#4c8dff" stop-opacity="0"/>
                 </linearGradient>
               </defs>
               <path class="chart-area" id="chart-area"></path>
@@ -102,59 +102,54 @@
         </div>
 
         <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
-            <h3>⚡ Segnali quantistici di oggi</h3>
-            <span id="signal-count" style="color:var(--muted); font-size:14px">0/3 attivati</span>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:6px; flex-wrap:wrap">
+            <h3 style="font-size:16px; font-weight:600">Ordini di oggi</h3>
+            <span id="signal-count" style="color:var(--muted); font-size:13px">0/0 eseguiti</span>
           </div>
-          <p id="signals-note" style="color:var(--muted); font-size:14px; margin-bottom:18px">
-            ⚠️ I segnali scadono a mezzanotte. Attivali tutti e 3 per non perdere il profitto.
+          <p id="signals-note" style="color:var(--muted); font-size:13px; margin-bottom:16px">
+            Gli ordini sono distribuiti nell'arco della giornata secondo il livello del piano.
           </p>
           <div id="signals"></div>
         </div>
 
-        <!-- I MIEI PIANI (quanti e quali) -->
+        <!-- POSIZIONI -->
         <div class="card" style="margin-top:20px">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px">
-            <h3>🏆 I miei piani</h3>
-            <span class="streak" id="positions-count" style="font-size:12px">0 piani attivi</span>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px">
+            <h3 style="font-size:16px; font-weight:600">Posizioni attive</h3>
+            <span class="badge" id="positions-count">0 piani attivi</span>
           </div>
-          <p style="color:var(--muted); font-size:14px; margin-bottom:16px">
-            Ogni piano che attivi è una posizione a se stante: puoi comprarne quanti vuoi e ognuno rende il suo.
+          <p style="color:var(--muted); font-size:13.5px; margin-bottom:14px">
+            Ogni piano attivato è una posizione indipendente, con importo e rendimento propri.
           </p>
           <div id="positions-list"></div>
-          <div id="yield-live" style="display:none; margin-top:14px; padding:12px 14px; border-radius:12px; background:rgba(34,255,136,.08); border:1px solid rgba(34,255,136,.25); font-size:14px">
-            <div style="color:var(--muted); font-size:12.5px">Resa maturata oggi</div>
-            <div style="color:var(--green); font-weight:800; font-size:20px" id="yield-today">€0,0000</div>
-            <div style="height:6px; border-radius:99px; background:rgba(0,0,0,.35); margin:10px 0 8px; overflow:hidden">
-              <div id="yield-bar" style="height:100%; width:0%; background:linear-gradient(90deg,#22ff88,#00c853); border-radius:99px; transition:width 1s linear"></div>
+          <div id="yield-live" style="display:none; margin-top:14px; padding:14px; border-radius:8px; background:rgba(47,191,113,.05); border:1px solid rgba(47,191,113,.18); font-size:13.5px">
+            <div style="color:var(--muted); font-size:11px; letter-spacing:.07em; text-transform:uppercase; font-weight:600">Rendimento maturato oggi</div>
+            <div style="color:var(--pos); font-weight:600; font-size:22px; letter-spacing:-.01em" id="yield-today">€0,0000</div>
+            <div style="height:4px; border-radius:99px; background:rgba(255,255,255,.06); margin:10px 0 8px; overflow:hidden">
+              <div id="yield-bar" style="height:100%; width:0%; background:var(--pos); border-radius:99px; transition:width 1s linear"></div>
             </div>
-            <div style="color:var(--muted); font-size:12px" id="yield-note">si accredita automaticamente, anche senza aprire il pannello</div>
+            <div style="color:var(--muted); font-size:12px" id="yield-note">maturazione continua</div>
           </div>
-          <a href="plans.html" class="btn btn-green btn-block" style="margin-top:14px; text-decoration:none">＋ Attiva un altro piano</a>
+          <a href="plans.html" class="btn btn-ghost btn-block" style="margin-top:14px; text-decoration:none; text-align:center">Attiva un altro piano</a>
         </div>
 
         <div class="card" style="margin-top:20px">
-          <h3 style="margin-bottom:16px">💰 Operazioni</h3>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px">
-            <button class="btn btn-green" onclick="openModal('deposit')">＋ Deposita</button>
-            <button class="btn btn-primary" onclick="openModal('withdraw')">↺ Prelievo</button>
+          <h3 style="font-size:16px; font-weight:600; margin-bottom:14px">Movimenti</h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+            <button class="btn btn-primary" onclick="openModal('deposit')">Deposita</button>
+            <button class="btn btn-ghost" onclick="openModal('withdraw')">Preleva</button>
           </div>
         </div>
 
         <div class="card" style="margin-top:20px">
-          <h3 style="margin-bottom:12px">📄 Ultimi movimenti</h3>
+          <h3 style="font-size:16px; font-weight:600; margin-bottom:10px">Storico prelievi</h3>
           <div id="withdrawals-list"><p style="color:var(--muted)">Caricamento...</p></div>
         </div>
       </div>
 
       <div>
         <div class="card">
-          <h3 style="margin-bottom:16px">🔴 Live AI Signals</h3>
-          <div class="feed" id="feed"></div>
-        </div>
-
-        <div class="card" style="margin-top:20px">
-          <h3 style="margin-bottom:16px">🧾 Le tue ultime operazioni</h3>
+          <h3 style="font-size:16px; font-weight:600; margin-bottom:10px">Ultime operazioni</h3>
           <div id="my-activity"><p style="color:var(--muted)">Caricamento...</p></div>
         </div>
       </div>
@@ -166,29 +161,29 @@
     <div class="modal">
       <h2>Deposita fondi</h2>
       <div class="form">
-        <p style="color:var(--muted); font-size:14px">Scegli come pagare. Con carta o credito l'accredito e' immediato; con crypto ti diamo l'indirizzo del wallet.</p>
+        <p style="color:var(--muted); font-size:13.5px">Con carta l'accredito è immediato. Con crypto viene fornito l'indirizzo del wallet e il versamento è soggetto a verifica.</p>
         <div>
           <label class="label">Metodo di pagamento</label>
           <select class="input" id="dep-method" onchange="togglePayMethod()">
             <option value="card">Carta di credito / debito — accredito immediato</option>
-            <option value="crypto">Criptovaluta USDT (BEP-20) — trasferimento al wallet</option>
+            <option value="crypto">USDT (BEP-20) — trasferimento al wallet</option>
           </select>
         </div>
         <div>
           <label class="label">Importo (€)</label>
-          <input class="input" id="dep-amount" type="number" placeholder="1000" />
+          <input class="input" id="dep-amount" type="number" placeholder="3000" />
         </div>
         <div id="dep-crypto-box" style="display:none">
-          <label class="label">Wallet di deposito (USDT BEP-20 · BNB Smart Chain)</label>
+          <label class="label">Wallet di deposito · USDT BEP-20 · BNB Smart Chain</label>
           <input class="input" id="dep-wallet" readonly style="font-size:12px" value="0x2320a9e89C988dC605796e74adFa0e5a4A1deeA3" />
-          <p style="color:var(--muted); font-size:12px; margin-top:6px">Invia l'importo su questo indirizzo: la verifica arriva via Telegram.</p>
+          <p style="color:var(--muted); font-size:12px; margin-top:6px">La verifica del trasferimento avviene tramite Telegram.</p>
         </div>
         <div id="dep-card-box">
           <label class="label">Dati carta</label>
           <input class="input" id="dep-card" placeholder="4242 4242 4242 4242" />
-          <p style="color:var(--muted); font-size:12px; margin-top:6px">Importo accreditato subito sul saldo, nessun secondo pagamento richiesto.</p>
+          <p style="color:var(--muted); font-size:12px; margin-top:6px">L'importo viene accreditato sul saldo al termine della conferma.</p>
         </div>
-        <button class="btn btn-green btn-block" onclick="doDeposit(this)">Conferma deposito</button>
+        <button class="btn btn-primary btn-block" onclick="doDeposit(this)">Conferma deposito</button>
         <button class="btn btn-ghost btn-block" onclick="closeModal('deposit')">Annulla</button>
       </div>
     </div>
@@ -199,7 +194,7 @@
     <div class="modal">
       <h2>Prelievo fondi</h2>
       <div class="form">
-        <p id="wd-hint" style="color:var(--muted); font-size:14px">Prelievo minimo €50 · Fee piattaforma 5% · Verifica documenti richiesta (30-45 giorni lavorativi)</p>
+        <p id="wd-hint" style="color:var(--muted); font-size:13.5px">Prelievo minimo 30 USDT · commissione 2,5% (minimo 2) · 20 ordini completati prima del primo prelievo.</p>
         <div>
           <label class="label">Importo (€)</label>
           <input class="input" id="wd-amount" type="number" placeholder="100" />

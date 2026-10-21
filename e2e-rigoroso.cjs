@@ -197,7 +197,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   // ================= 9. BONUS REFERRAL (solo se deposita) =================
   step('9. BONUS REFERRAL (solo se l\'invitato deposita)');
   const afterDep = await httpsCall('/api/referrals', 'GET', null, auth(ownerToken));
-  const friend = afterDep.j.list.find(f => f.name === 'E2e A');
+  const friend = afterDep.j.list.find(f => f.email === emailA);
   ok(!!friend, 'l\'invitato compare nella lista del referrer');
   ok(friend && friend.active === true, 'l\'invitato e\' attivo (ha depositato)');
   ok(friend && friend.bonus > 0, 'bonus accreditato al referrer', friend ? String(friend.bonus) : '');
@@ -205,7 +205,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   const regB = await httpsCall('/api/register', 'POST', { email: emailB, password: 'E2e123!', name: 'E2e B', ref: 'QX0004' });
   ok(regB.s === 201, 'secondo invitato registrato (SENZA deposito)');
   const afterB = await httpsCall('/api/referrals', 'GET', null, auth(ownerToken));
-  const friendB = afterB.j.list.find(f => f.name === 'E2e B');
+  const friendB = afterB.j.list.find(f => f.email === emailB);
   ok(friendB && friendB.active === false, 'invitato senza deposito: NON attivo');
   ok(friendB && friendB.bonus === 0, 'invitato senza deposito: bonus ZERO', friendB ? String(friendB.bonus) : '');
 
@@ -220,7 +220,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     src.close();
   } catch (e) { ok(false, 'copia del database per il test', e.message); }
   const child = spawn(process.execPath, [path.join(__dirname, 'server.js')], {
-    env: Object.assign({}, process.env, { QX_DB_FILE: tmpDb, QX_TEST_HOUR: '9', PORT: '3100' }),
+    env: Object.assign({}, process.env, { QX_DB_FILE: tmpDb, QX_TEST_HOUR: '12', PORT: '3100' }),
     stdio: ['ignore', 'pipe', 'pipe'], cwd: __dirname,
   });
   let childOut = '';
@@ -244,7 +244,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     if (s0.s === 500) {
       console.log('  --- output istanza di test ---\n' + childOut.slice(-1200) + '\n  --- fine ---');
     }
-    ok(s0.s === 200, 'segnale delle 09:00 attivabile alle 09:00', 'status ' + s0.s + ' ' + ((s0.j && s0.j.error) || '') + ' ' + (s0.j && s0.j.profit !== undefined ? 'profitto ' + s0.j.profit : ''));
+    ok(s0.s === 200, 'segnale/ordine delle 12:00 attivabile alle 12:00 (ora di test)', 'status ' + s0.s + ' ' + ((s0.j && s0.j.error) || '') + ' ' + (s0.j && s0.j.profit !== undefined ? 'profitto ' + s0.j.profit : ''));
     ok(s0.s === 200 && s0.j && typeof s0.j.profit === 'number', 'il segnale accredita un profitto reale', s0.j ? String(s0.j.profit) : 'risposta non JSON');
     // con il modello EIRIO il profitto e' rateo orario (4-9 ordini) e puo' essere 0;
     // con i segnali quantx il profitto non e' mai 0
@@ -253,7 +253,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     ok(profitOk, 'profitto coerente col modello attivo', s0.j ? String(s0.j.profit) + ' (modello EIRIO)' : '');
     const s0b = await localCall(3100, '/api/claim-signal', 'POST', { index: 0 }, auth(tokT));
     ok(s0b.s === 409, 'stesso segnale non e\' riattivabile', s0b.j && s0b.j.error);
-    // nell'istanza di test valgono gli ORARI quantx (9/14/20) anche se il piano e' EIRIO
+    // nell'istanza di test valgono gli ORARI quantx (12/14/20) anche se il piano e' EIRIO
     const s1 = await localCall(3100, '/api/claim-signal', 'POST', { index: 1 }, auth(tokT));
     if (eirio) {
       ok(s1.s === 200 && typeof s1.j.profit === 'number', 'modello EIRIO: ordine 2 disponibile (1 all\'ora)', 'status ' + s1.s + ' profitto ' + (s1.j.profit !== undefined ? s1.j.profit : '-'));
@@ -261,7 +261,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
       // un guadagno OR una perdita, come nel trading reale): entro +-3,3% di 3.000 EUR in 2 ore
       ok(s1.s === 200 && Math.abs(s1.j.profit) <= Math.round(3000 * 0.033 * 2 * 100) / 100, 'profitto EIRIO entro il range del livello', String(s1.j.profit));
     } else {
-      ok(s1.s === 403, 'segnale delle 14:00 non attivabile alle 09:00', s1.j && s1.j.error);
+      ok(s1.s === 403, 'segnale delle 14:00 non attivabile alle 12:00', s1.j && s1.j.error);
     }
     const meT = await localCall(3100, '/api/me', 'GET', null, auth(tokT));
     const expectedClaimed = eirio ? 2 : 1;

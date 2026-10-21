@@ -3,7 +3,12 @@ const TOKEN_KEY = 'quantx_token';
 const token = localStorage.getItem(TOKEN_KEY);
 
 const $ = (id) => document.getElementById(id);
-const fmt = (n) => '€' + Number(n || 0).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n) => '€' + itNum(n, 2);
+const itNum = (n, d = 0) => {
+  const fixed = Number(n || 0).toFixed(d);
+  const parts = fixed.split('.');
+  return parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (parts[1] ? ',' + parts[1] : '');
+};
 const toast = (msg) => { const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); };
 
 async function api(path, opts = {}) {
@@ -41,14 +46,14 @@ async function load() {
   myLink = location.origin + '/app.html?ref=' + refs.code;
   $('ref-link').textContent = myLink;
   $('invite-text').textContent =
-    'Messaggio pronto: "Ti passo QuantX AI, rendita automatica ogni giorno sul capitale. Registrati con il mio link: ' + myLink + '"';
+    'Messaggio pronto: "Ti passo QuantX AI, gestione algoritmica del capitale. Registrati con il mio link: ' + myLink + '"';
 
   const list = refs.list || [];
   if (!list.length) {
     $('friends-list').innerHTML = `
       <p style="color:var(--muted); line-height:1.7">
-        Non hai ancora invitato nessuno. Copia il tuo link e condividilo: appena un amico deposita,
-        il tuo bonus del 10-17% arriva direttamente sul saldo.
+        Nessun contatto collegato. Condividi il link: quando un contatto effettua un versamento confermato,
+        la commissione del 17% viene accreditata sul saldo.
       </p>`;
     return;
   }
@@ -59,13 +64,13 @@ async function load() {
         <h4>${f.name}</h4>
         <div class="meta">
           ${f.active
-            ? '<span class="win">Attivo</span> · ha depositato ' + fmt(f.deposited) + ' · bonus tuo ' + fmt(f.bonus)
-            : 'Registrato, non ha ancora depositato — il bonus si sblocca al primo deposito'}
+            ? '<span class="win">Attivo</span> · versamento ' + fmt(f.deposited) + ' · commissione ' + fmt(f.bonus)
+            : 'Registrato, senza versamenti — la commissione matura al primo versamento confermato'}
         </div>
       </div>
       <div style="text-align:right">
-        <div style="color:var(--green); font-weight:800">${fmt(f.bonus)}</div>
-        <div style="color:var(--muted); font-size:12px">bonus</div>
+        <div style="color:var(--pos); font-weight:600">${fmt(f.bonus)}</div>
+        <div style="color:var(--muted); font-size:12px">commissione</div>
       </div>
     </div>`).join('');
 }
@@ -73,11 +78,11 @@ async function load() {
 function copyRef() {
   if (navigator.clipboard) navigator.clipboard.writeText(myLink);
   else { const ta = document.createElement('textarea'); ta.value = myLink; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
-  toast('🔗 Link copiato. Condividilo e guadagna!');
+  toast('Link copiato negli appunti.');
 }
 
 function share(channel) {
-  const msg = 'Ti passo QuantX AI: rendita automatica ogni giorno sul capitale. Registrati con il mio link: ' + myLink;
+  const msg = 'Ti passo QuantX AI: gestione algoritmica del capitale. Registrati con il mio link: ' + myLink;
   if (channel === 'wa') window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
   else if (channel === 'tg') window.open('https://t.me/share/url?url=' + encodeURIComponent(myLink) + '&text=' + encodeURIComponent(msg), '_blank');
   else if (channel === 'sms') window.location.href = 'sms:?&body=' + encodeURIComponent(msg);

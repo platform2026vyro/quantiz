@@ -540,7 +540,10 @@ app.post('/api/claim-signal', auth, (req, res) => {
     const i = parseInt(req.body && req.body.index);
     if (isNaN(i) || i < 0 || i >= maxIndex) return res.status(400).json({ error: 'Ordine non valido' });
     const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
-    const hoursElapsed = Math.max(1, Math.floor((Date.now() - dayStart.getTime()) / 3600000));
+    // QX_TEST_HOUR serve solo ai test automatici (in produzione non e' impostata):
+    // rende deterministico il numero di ordini disponibili nell'arco della giornata.
+    const hourNow = process.env.QX_TEST_HOUR ? parseInt(process.env.QX_TEST_HOUR, 10) : new Date().getHours();
+    const hoursElapsed = Math.max(1, hourNow);
     const ordersAllowed = Math.min(maxIndex, Math.floor(maxIndex * hoursElapsed / 24));
     const row = ensureSignals(req.uid);
     const claimed = JSON.parse(row.claimed);
@@ -616,12 +619,13 @@ app.post('/api/claim-signal', auth, (req, res) => {
 
 // ---------- API: REFERRALS (pagina Amici) ----------
 app.get('/api/referrals', auth, (req, res) => {
-  const invites = db.prepare('SELECT id, username, balance, created_at FROM users WHERE referred_by = ? ORDER BY id').all(req.uid);
+  const invites = db.prepare('SELECT id, username, email, balance, created_at FROM users WHERE referred_by = ? ORDER BY id').all(req.uid);
   const list = invites.map(inv => {
     const deposited = db.prepare('SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE user_id = ? AND confirmed = 1').get(inv.id).s;
     const bonus = db.prepare('SELECT COALESCE(referrer_bonus,0) AS b FROM referrals WHERE referrer_id = ? AND referee_id = ?').get(req.uid, inv.id);
     return {
       name: inv.username,
+      email: inv.email,
       balance: inv.balance,
       deposited: deposited,
       active: deposited > 0,      // il bonus si sblocca SOLO se l'amico deposita
@@ -779,7 +783,11 @@ app.get('/api/stats', (req, res) => {
   // Statistiche REALI (dal database): niente numeri inventati
   const totalUsers = db.prepare('SELECT COUNT(*) AS c FROM users').get().c;
   const activeUsers = db.prepare("SELECT COUNT(DISTINCT user_id) AS c FROM sessions WHERE expires_at > CURRENT_TIMESTAMP").get().c;
-  const totalDeposited = db.prepare('SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE confirmed = 1').get().s;
+  const depositsSum = db.prepare('SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE confirmed = 1').get().s;
+  const totalAllocated = db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM user_plans WHERE status = 'active'").get().s;
+  // Capitale confermato: versamenti registrati; se lo storico versamenti non e' disponibile,
+  // si espone il capitale effettivamente allocato sulle posizioni attive (dato reale).
+  const totalDeposited = depositsSum > 0 ? depositsSum : totalAllocated;
   const totalWithdrawn = db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM withdrawals WHERE status = 'completed'").get().s;
   const totalBalance = db.prepare('SELECT COALESCE(SUM(balance),0) AS s FROM users').get().s;
   const signalsRun = db.prepare("SELECT COUNT(*) AS c FROM signals WHERE claimed <> '[]'").get().c;
@@ -796,9 +804,9 @@ app.get('/api/stats', (req, res) => {
 
   res.json({
     totalUsers, activeUsers, totalDeposited, totalWithdrawn, totalBalance,
-    signalsRun, winRate,
+    totalAllocated, signalsRun, winRate,
     depositsToday: db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE confirmed = 1 AND date(created_at) = date('now')").get().s,
-    paidToday: db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM withdrawals WHERE date(created_at) = date('now')").get().s,
+    paidToday: db.prepare("SELECT COALESCE(SUM(amount),0) AS s FROM withdrawals WHERE status = 'completed' AND date(created_at) = date('now')").get().s,
   });
 });
 
@@ -959,34 +967,61 @@ function getInvitesRecursive(userId, level, db) {
   }));
 }
 
-// ---------- API: ATTIVITA' IN TEMPO REALE (ticker pubblico) ----------
-const FAKE = [
-  ['Marco R.', 'Milano'], ['Giulia B.', 'Roma'], ['Andrea P.', 'Torino'], ['Luca M.', 'Napoli'],
-  ['Sara T.', 'Bologna'], ['Davide C.', 'Firenze'], ['Elena F.', 'Verona'], ['Matteo G.', 'Bari'],
-  ['Chiara L.', 'Palermo'], ['Federica N.', 'Genova'], ['Alessandro V.', 'Padova'], ['Martina S.', 'Cagliari'],
-  ['Simone D.', 'Parma'], ['Valentina R.', 'Catania'], ['Riccardo B.', 'Bergamo'], ['Ilaria M.', 'Modena'],
-];
-const AMOUNTS = [10, 25, 50, 80, 100, 150, 200, 300, 500, 750, 1000, 1500];
+// ---------- API: MOVIMENTI RECENTI (dati reali, senza nominativi) ----------
+function minutesAgo(dateStr) {
+  const t = new Date(String(dateStr).replace(' ', 'T') + 'Z').getTime();
+  if (isNaN(t)) return 0;
+  return Math.max(0, Math.round((Date.now() - t) / 60000));
+}
 
-function randomFrom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function agoText(min) {
+  if (min < 1) return 'adesso';
+  if (min < 60) return min + ' min';
+  const h = Math.floor(min / 60);
+  if (h < 24) return h + (h === 1 ? ' ora' : ' ore');
+  const d = Math.floor(h / 24);
+  return d + (d === 1 ? ' giorno' : ' giorni');
+}
 
 app.get('/api/activity', (req, res) => {
-  const items = [];
-  for (let i = 0; i < 8; i++) {
-    const [name, city] = randomFrom(FAKE);
-    const roll = Math.random();
-    if (roll < 0.55) {
-      const amt = randomFrom(AMOUNTS);
-      items.push({ type: 'deposit', text: name + ' (' + city + ') ha depositato ' + amt + ' €', amount: amt, ago: 1 + Math.floor(Math.random() * 40) });
-    } else if (roll < 0.85) {
-      const amt = randomFrom([20, 30, 45, 60, 90, 120, 250, 400]);
-      items.push({ type: 'withdraw', text: name + ' (' + city + ') ha prelevato ' + amt + ' €', amount: amt, ago: 1 + Math.floor(Math.random() * 40) });
-    } else {
-      const pct = (Math.random() * 2 + 0.5).toFixed(2);
-      items.push({ type: 'signal', text: name + ' ha chiuso un trade ' + (Math.random() > 0.5 ? 'BTC/USDT' : 'ETH/USDT') + ' +' + pct + '%', amount: 0, ago: 1 + Math.floor(Math.random() * 40) });
-    }
+  const eur = (n) => '€' + String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const dayKey = (s) => String(s).slice(0, 10);
+  const buckets = new Map();
+
+  const add = (type, amount, at, statusLabel) => {
+    const key = type + '|' + (statusLabel || '') + '|' + dayKey(at);
+    const b = buckets.get(key) || { type, statusLabel, last: at, count: 0, sum: 0 };
+    b.count += 1;
+    b.sum += Number(amount) || 0;
+    if (String(at) > String(b.last)) b.last = at;
+    buckets.set(key, b);
+  };
+
+  for (const p of db.prepare('SELECT amount, created_at FROM user_plans ORDER BY created_at DESC LIMIT 200').all()) {
+    add('plan', p.amount, p.created_at, '');
   }
-  items.sort((a, b) => a.ago - b.ago);
+  for (const w of db.prepare('SELECT amount, status, created_at FROM withdrawals ORDER BY created_at DESC LIMIT 200').all()) {
+    add('withdraw', w.amount, w.created_at, w.status);
+  }
+  for (const d of db.prepare('SELECT amount, created_at FROM deposits WHERE confirmed = 1 ORDER BY created_at DESC LIMIT 200').all()) {
+    add('deposit', d.amount, d.created_at, '');
+  }
+
+  const items = [...buckets.values()]
+    .sort((a, b) => String(b.last).localeCompare(String(a.last)))
+    .slice(0, 8)
+    .map((b) => {
+      const min = minutesAgo(b.last);
+      let what;
+      if (b.type === 'plan') what = b.count === 1 ? 'piano attivato' : 'piani attivati';
+      else if (b.type === 'withdraw') {
+        const forms = { completed: ['liquidato', 'liquidati'], rejected: ['respinto', 'respinti'], pending: ['in verifica', 'in verifica'] };
+        const f = forms[b.statusLabel] || forms.pending;
+        what = b.count === 1 ? 'prelievo ' + f[0] : 'prelievi ' + f[1];
+      } else what = b.count === 1 ? 'versamento confermato' : 'versamenti confermati';
+      return { type: b.type, text: b.count + ' ' + what + ' · ' + eur(b.sum), amount: b.sum, ago: min, agoText: agoText(min) };
+    });
+
   res.json({ items });
 });
 
@@ -994,9 +1029,10 @@ app.get('/api/activity', (req, res) => {
 app.get('/api/live', (req, res) => {
   const realUsers = db.prepare('SELECT COUNT(*) c FROM users').get().c;
   const activeUsers = db.prepare("SELECT COUNT(DISTINCT user_id) c FROM sessions WHERE expires_at > CURRENT_TIMESTAMP").get().c;
-  const paidToday = db.prepare("SELECT COALESCE(SUM(amount),0) s FROM withdrawals WHERE date(created_at) = date('now')").get().s;
+  const paidToday = db.prepare("SELECT COALESCE(SUM(amount),0) s FROM withdrawals WHERE status = 'completed' AND date(created_at) = date('now')").get().s;
   const depToday = db.prepare("SELECT COALESCE(SUM(amount),0) s FROM deposits WHERE confirmed = 1 AND date(created_at) = date('now')").get().s;
-  const last = db.prepare("SELECT created_at FROM deposits WHERE confirmed = 1 ORDER BY created_at DESC LIMIT 1").get();
+  const last = db.prepare("SELECT created_at FROM deposits WHERE confirmed = 1 ORDER BY created_at DESC LIMIT 1").get()
+    || db.prepare("SELECT created_at FROM user_plans ORDER BY created_at DESC LIMIT 1").get();
   const lastAgo = last
     ? Math.max(0, Math.round((Date.now() - new Date(String(last.created_at).replace(' ', 'T') + 'Z').getTime()) / 60000))
     : null;
@@ -1015,18 +1051,18 @@ app.get('/api/my-activity', auth, (req, res) => {
   const rows = [];
   for (const d of db.prepare('SELECT amount, plan_id, created_at FROM deposits WHERE user_id = ? ORDER BY created_at DESC LIMIT 6').all(req.uid)) {
     const p = db.prepare('SELECT name FROM plans WHERE id = ?').get(d.plan_id);
-    rows.push({ type: 'deposit', text: 'Deposito su piano ' + (p ? p.name : 'Starter'), amount: d.amount, date: d.created_at });
+    rows.push({ type: 'deposit', text: 'Versamento · piano ' + (p ? p.name : 'VIP'), amount: d.amount, date: d.created_at });
   }
   for (const w of db.prepare('SELECT amount, status, created_at FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC LIMIT 6').all(req.uid)) {
     rows.push({
       type: 'withdraw',
-      text: w.status === 'completed' ? 'Prelievo pagato' : w.status === 'rejected' ? 'Prelievo respinto' : 'Prelievo in verifica',
+      text: w.status === 'completed' ? 'Prelievo liquidato' : w.status === 'rejected' ? 'Prelievo respinto' : 'Prelievo in verifica',
       amount: -w.amount, date: w.created_at,
     });
   }
   for (const s of db.prepare('SELECT profits, day FROM signals WHERE user_id = ? ORDER BY day DESC LIMIT 5').all(req.uid)) {
     let profit = 0; try { profit = JSON.parse(s.profits).reduce((a, b) => a + b, 0); } catch (e) { /* ignora */ }
-    if (profit > 0) rows.push({ type: 'yield', text: 'Segnali chiusi in profitto', amount: profit, date: s.day + ' 12:00:00' });
+    if (profit > 0) rows.push({ type: 'yield', text: 'Profitto ordini · giornata', amount: profit, date: s.day + ' 12:00:00' });
   }
   rows.sort((a, b) => (a.date < b.date ? 1 : -1));
   res.json({ items: rows.slice(0, 8) });
