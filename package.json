@@ -5,11 +5,15 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "bot": "node telegram-bot.js"
+    "bot": "node telegram-bot.js",
+    "postinstall": "node scripts/pin-prebuild.js"
   },
   "dependencies": {
-    "better-sqlite3": "^13.0.3",
+    "better-sqlite3": "12.11.1",
     "dotenv": "^16.3.1",
     "express": "^4.19.2"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true
   }
 }

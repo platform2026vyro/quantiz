@@ -49,16 +49,101 @@ app.get('/api/version', (req, res) => {
 });
 
 // ---------- DATABASE ----------
+// La cartella data/ non esiste su un clone appena scaricato: il server la crea
+// da solo, cosi' `node server.js` funziona senza passaggi manuali.
 const DB_FILE = process.env.QX_DB_FILE || path.join(__dirname, 'data', 'quantx.db');
+try { fs.mkdirSync(path.dirname(DB_FILE), { recursive: true }); } catch (e) { /* gia' presente */ }
 const db = new Database(DB_FILE);
 db.pragma('journal_mode = WAL');
-db.exec(`CREATE TABLE IF NOT EXISTS signals (
-  user_id INTEGER NOT NULL,
-  day TEXT NOT NULL,
-  claimed TEXT NOT NULL DEFAULT '',
-  profits TEXT NOT NULL DEFAULT '',
-  UNIQUE(user_id, day)
-)`);
+
+// ---------- SCHEMA BASE ----------
+// Il server crea qui la struttura completa al primo avvio: su un clone pulito
+// non esiste il database e in passato serviva lanciare create-database.js
+// (divenuto obsoleto: le colonne non corrispondevano a quelle usate dal server).
+// Tabelle e colonne rispecchiano ESATTAMENTE le query del server.
+function ensureSchema() {
+  db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL,
+    username TEXT,
+    password_hash TEXT NOT NULL,
+    referral_code TEXT UNIQUE,
+    referred_by INTEGER,
+    wallet_address TEXT,
+    balance DECIMAL(15,2) DEFAULT 0,
+    total_ref_deposits DECIMAL(15,2) DEFAULT 0,
+    plan_id INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token TEXT UNIQUE NOT NULL,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS plans (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    min_deposit DECIMAL(10,2) NOT NULL,
+    max_deposit DECIMAL(10,2),
+    daily_yield_pct DECIMAL(5,2) NOT NULL,
+    ref_bonus_pct DECIMAL(5,2) DEFAULT 0,
+    color TEXT,
+    icon TEXT
+  );
+  CREATE TABLE IF NOT EXISTS deposits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    plan_id INTEGER,
+    confirmed INTEGER DEFAULT 0,
+    method TEXT DEFAULT 'card',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS withdrawals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    fee DECIMAL(10,2) DEFAULT 0,
+    status TEXT DEFAULT 'pending',
+    is_fast INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS referrals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    referrer_id INTEGER NOT NULL,
+    referee_id INTEGER NOT NULL,
+    referrer_bonus DECIMAL(10,2) DEFAULT 0,
+    active INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(referrer_id, referee_id)
+  );
+  CREATE TABLE IF NOT EXISTS user_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    plan_id INTEGER NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS signals (
+    user_id INTEGER NOT NULL,
+    day TEXT NOT NULL,
+    claimed TEXT NOT NULL DEFAULT '',
+    profits TEXT NOT NULL DEFAULT '',
+    UNIQUE(user_id, day)
+  );
+  `);
+}
+ensureSchema();
 
 // ---------- CONFIG ----------
 // Paramenti ufficiali (modello 'quantx')
@@ -99,9 +184,22 @@ const PLAN_MODEL_EIRIO = {
 };
 
 // Il modello attivo si legge SOLO dalla tabella settings (chiave plan_model).
-// Di default resta 'quantx': nessun cambiamento finche' l'amministratore non lo attiva.
-const activeModelRow = db ? db.prepare("SELECT value FROM settings WHERE key = 'plan_model'").get() : null;
-const PLAN_MODEL = (activeModelRow && activeModelRow.value === 'eirio') ? PLAN_MODEL_EIRIO : CONFIG;
+// Di default e' 'eirio': la piattaforma opera con i 6 livelli VIP del documento.
+// (Un database creato da versioni piu' vecchie puo' avere 'quantx': migrate()
+//  normalizza il valore su ogni avvio, quindi la piattaforma resta coerente.)
+function readPlanModel() {
+  // Su un database appena creato la tabella settings non esiste ancora:
+  // migrate() la crea e normalizza su 'eirio' subito dopo. Il default qui
+  // copre l'attimo di prima apertura senza far crashare il server.
+  try {
+    const row = db.prepare("SELECT value FROM settings WHERE key = 'plan_model'").get();
+    if (!row) return PLAN_MODEL_EIRIO;
+    return (row && row.value === 'eirio') ? PLAN_MODEL_EIRIO : CONFIG;
+  } catch (e) {
+    return PLAN_MODEL_EIRIO;
+  }
+}
+let PLAN_MODEL = readPlanModel();
 
 // ---------- MIGRAZIONI: DB sempre coerente ----------
 function migrate() {
@@ -114,6 +212,12 @@ function migrate() {
 
   // Il proprietario e' l'admin della piattaforma
   db.prepare('UPDATE users SET is_admin = 1 WHERE email = ?').run(CONFIG.ADMIN_EMAIL);
+
+  // Normalizza il modello dei piani: la piattaforma opera con i 6 livelli VIP
+  // (documentazione EIRIO). Un DB creato da una versione vecchia con 'quantx'
+  // viene riallineato qui, su ogni avvio.
+  db.prepare("INSERT INTO settings (key, value) VALUES ('plan_model', 'eirio') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
+  PLAN_MODEL = readPlanModel();
 
 // Piani ufficiali: con il modello EIRIO attivo sono i VIP 1-6 del documento
 // (importi minimi, range di rendimento, ordini giornalieri e regole di prelievo EIRIO).
@@ -708,7 +812,9 @@ function creditYield(user) {
   // se non ha mai maturato, si parte da mezzanotte di oggi
   const from = Math.max(last || dayStart.getTime(), dayStart.getTime());
   const elapsed = Math.max(0, now - from);
-  const days = Math.min(elapsed / DAY_MS, 30);          // max 30 giorni di accumulo
+  // La resa e' giornaliera: un utente che si allontana non accumula settimane
+  // di profit. Max 24 ore di maturazione vengono accreditate al rientro.
+  const days = Math.min(elapsed / DAY_MS, 1);
   const credited = Math.round(daily * days * 100) / 100;
 
   if (credited > 0) {
@@ -751,12 +857,44 @@ app.post('/api/activate-plan', auth, (req, res) => {
   // la resa maturata fin qui viene accreditata al credito
   const yld = creditYield(db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid));
 
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid);
+  const upgraded = checkUpgrades(user);   // members attivi = upgrade bonus (sez. 3.4)
+
   res.status(201).json({
     plan: { id: plan.id, name: plan.name, minDeposit: plan.min_deposit, maxDeposit: plan.max_deposit, dailyYieldPct: plan.daily_yield_pct, refBonusPct: plan.ref_bonus_pct },
     position: { id: pos.lastInsertRowid, amount: cost },
+    upgraded,
     user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid)),
   });
 });
+
+// ---------- UPGRADE: membri attivi -> livello + bonus (sez. 3.4 del documento) ----------
+// Quando il numero di amici attivi raggiunge la soglia del livello superiore,
+// the member is upgraded (higher orders per day and higher yield range) and
+// the upgrade bonus is credited.
+function activeMembers(userId) {
+  return db.prepare(`
+    SELECT COUNT(*) AS c
+    FROM users u
+    WHERE u.referred_by = ? AND EXISTS (SELECT 1 FROM deposits d WHERE d.user_id = u.id AND d.confirmed = 1)
+  `).get(userId).c;
+}
+
+function checkUpgrades(user) {
+  if (PLAN_MODEL.model !== 'eirio') return null;
+  const active = activeMembers(user.id);
+  if (active <= 0) return null;
+  let target = 1;
+  for (const lvl of [2, 3, 4, 5, 6]) {
+    if (active >= PLAN_MODEL_EIRIO.UPGRADE_MEMBERS[lvl]) target = lvl;
+  }
+  if (target <= (user.plan_id || 1)) return null;
+  const bonus = PLAN_MODEL_EIRIO.UPGRADE_BONUS[target] || 0;
+  const newBalance = Math.round((user.balance + bonus) * 100) / 100;
+  db.prepare('UPDATE users SET balance = ?, plan_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+    .run(newBalance, target, user.id);
+  return { level: target, bonus, active };
+}
 
 // ---------- API: POSIZIONI (i piani attivi) ----------
 app.get('/api/positions', auth, (req, res) => {
@@ -849,10 +987,14 @@ app.post('/api/deposit', auth, (req, res) => {
     }
   }
 
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid);
+  const upgraded = checkUpgrades(user);   // il deposito attiva l'amico e vale per gli upgrade
+
   res.status(201).json({
     message: 'Deposito confermato. Fondi in elaborazione.',
     user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid)),
     deposit: { amount: amt, plan: plan.name, referrerBonus: referrerBonus },
+    upgraded,
   });
 });
 
@@ -868,18 +1010,25 @@ app.post('/api/withdraw', auth, (req, res) => {
   
   // Prelievo minimo e fee: modello quantx 50€ con fee 5%; modello EIRIO 30€ con
   // commissione 2,5% (minimo 2) e vincoli di ordini prima/dopo ogni prelievo
-  const minWithdraw = PLAN_MODEL.model === 'eirio' ? PLAN_MODEL_EIRIO.WITHDRAW_MIN : CONFIG.WITHDRAW_MIN;
+  const isEirio = PLAN_MODEL.model === 'eirio';
+  const minWithdraw = isEirio ? PLAN_MODEL_EIRIO.WITHDRAW_MIN : CONFIG.WITHDRAW_MIN;
+  const maxWithdraw = isEirio ? 20000 : null;
   if (amount < minWithdraw) {
     return res.status(400).json({ error: 'Prelievo minimo ' + minWithdraw + '€' });
   }
-  if (PLAN_MODEL.model === 'eirio') {
+  if (maxWithdraw && amount > maxWithdraw) {
+    return res.status(400).json({ error: 'Prelievo massimo ' + maxWithdraw + '€ per request' });
+  }
+  if (isEirio) {
     const blocked = eirioWithdrawalBlock(req.uid);
     if (blocked) return res.status(403).json(blocked);
   }
 
-  let fee = Math.round(amount * CONFIG.WITHDRAW_FEE_PCT * 100) / 100;
-  if (PLAN_MODEL.model === 'eirio') {
+  let fee;
+  if (isEirio) {
     fee = Math.max(PLAN_MODEL_EIRIO.MIN_FEE, Math.round(amount * PLAN_MODEL_EIRIO.WITHDRAW_FEE_PCT * 100) / 100);
+  } else {
+    fee = Math.round(amount * CONFIG.WITHDRAW_FEE_PCT * 100) / 100;
   }
   const balance = db.prepare('SELECT balance FROM users WHERE id = ?').get(req.uid).balance;
   if (amount + fee > balance) return res.status(400).json({ error: 'Saldo insufficiente (fee inclusa)' });
@@ -906,7 +1055,14 @@ app.post('/api/withdraw', auth, (req, res) => {
 });
 
 // ---------- API: PIANI ----------
+// Espone i livelli del modello attivo con tutte le caratteristiche necessarie
+// per renderizzare le card senza dati duplicati nel frontend.
 app.get('/api/plans', (req, res) => {
+  const isEirio = PLAN_MODEL.model === 'eirio';
+  const ordersPerDay = isEirio ? PLAN_MODEL_EIRIO.ORDERS_PER_DAY : null;
+  const yieldMax = isEirio ? PLAN_MODEL_EIRIO.PROFIT_MAX : null;
+  const upgradeMembers = isEirio ? PLAN_MODEL_EIRIO.UPGRADE_MEMBERS : null;
+  const upgradeBonus = isEirio ? PLAN_MODEL_EIRIO.UPGRADE_BONUS : null;
   const plans = db.prepare('SELECT * FROM plans ORDER BY id').all();
   res.json(plans.map(p => ({
     id: p.id,
@@ -914,6 +1070,11 @@ app.get('/api/plans', (req, res) => {
     minDeposit: p.min_deposit,
     maxDeposit: p.max_deposit,
     dailyYieldPct: p.daily_yield_pct,
+    dailyYieldMin: p.daily_yield_pct,
+    dailyYieldMax: (yieldMax && yieldMax[p.id]) ? yieldMax[p.id] : null,
+    ordersPerDay: (ordersPerDay && ordersPerDay[p.id]) ? ordersPerDay[p.id] : null,
+    upgradeMembers: (upgradeMembers && upgradeMembers[p.id]) ? upgradeMembers[p.id] : null,
+    upgradeBonus: (upgradeBonus && upgradeBonus[p.id]) ? upgradeBonus[p.id] : null,
     refBonusPct: p.ref_bonus_pct,
     color: p.color,
     icon: p.icon
@@ -1068,6 +1229,28 @@ app.get('/api/my-activity', auth, (req, res) => {
   res.json({ items: rows.slice(0, 8) });
 });
 
+// ---------- API: ADMIN - MODELLI DI PIANO ----------
+// L'amministratore puo' cambiare il modello dei piani (quantx | eirio).
+// I livelli del database vengono riallineati al modello scelto.
+app.get('/api/admin/plans', adminAuth, (req, res) => {
+  res.json({
+    model: PLAN_MODEL.model,
+    available: ['quantx', 'eirio'],
+    minWithdraw: PLAN_MODEL.model === 'eirio' ? PLAN_MODEL_EIRIO.WITHDRAW_MIN : CONFIG.WITHDRAW_MIN,
+    feePct: PLAN_MODEL.model === 'eirio' ? PLAN_MODEL_EIRIO.WITHDRAW_FEE_PCT : CONFIG.WITHDRAW_FEE_PCT,
+  });
+});
+
+app.post('/api/admin/plan-model', adminAuth, (req, res) => {
+  const model = (req.body && req.body.model) || '';
+  if (!['quantx', 'eirio'].includes(model)) return res.status(400).json({ error: 'Modello non valido (quantx | eirio)' });
+  db.prepare("INSERT INTO settings (key, value) VALUES ('plan_model', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(model);
+  // riallinea i livelli al modello scelto
+  migrate();
+  PLAN_MODEL = readPlanModel();
+  res.json({ ok: true, model: PLAN_MODEL.model });
+});
+
 // ---------- API: ADMIN (pannello di controllo) ----------
 // Accesso admin: account admin (email+password) OPPURE chiave admin
 app.post('/api/admin/login', (req, res) => {
@@ -1217,11 +1400,21 @@ process.on('exit', (code) => {
 // ---------- START SERVER ----------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('QuantX AI server attivo su http://localhost:' + PORT);
-  console.log('   - Piani: 3% / 4.5% / 6% / 8% al giorno');
-  console.log('   - Bonus referral: 10-17% (solo se gli invitati depositano)');
-  console.log('   - Prelievi: istantanei fino a EUR 30, sopra serve verifica');
-  console.log('   - Admin key: ' + CONFIG.ADMIN_KEY);
+  if (PLAN_MODEL.model === 'eirio') {
+    console.log('QuantX AI server attivo su http://localhost:' + PORT);
+    console.log('   - Modello piani: EIRIO (VIP 1-6), resa 1,5%-4% al giorno');
+    console.log('   - Ordini giornalieri: 4-9 per livello');
+    console.log('   - Bonus referral: 17% (solo se gli invitati depositano)');
+    console.log('   - Prelievi: min 30, massimi 20.000, commissione 2,5% (min 2)');
+    console.log('   - Admin key: ' + CONFIG.ADMIN_KEY);
+  } else {
+    console.log('QuantX AI server attivo su http://localhost:' + PORT);
+    console.log('   - Modello piani: quantx (Starter-Pro-Elite-Quantum)');
+    console.log('   - Piani: 3% / 4.5% / 6% / 8% al giorno');
+    console.log('   - Bonus referral: 10-17% (solo se gli invitati depositano)');
+    console.log('   - Prelievi: istantanei fino a EUR 30, sopra serve verifica');
+    console.log('   - Admin key: ' + CONFIG.ADMIN_KEY);
+  }
 });
 
 module.exports = app;
