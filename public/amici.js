@@ -1,4 +1,4 @@
-// QuantX AI - Pagina Amici: link invito, elenco amici, bonus
+// QuantX AI - Pagina Amici: link invito, squadra a 3 livelli, classifica, bonus
 const TOKEN_KEY = 'quantx_token';
 const token = localStorage.getItem(TOKEN_KEY);
 
@@ -21,77 +21,125 @@ async function api(path, opts = {}) {
 
 let myLink = '';
 
+function logout() {
+  localStorage.removeItem(TOKEN_KEY);
+  location.href = 'app.html';
+}
+
+async function copyText(txt) {
+  try {
+    await navigator.clipboard.writeText(txt);
+    toast('Link copiato: ' + txt);
+  } catch (e) {
+    const inp = document.createElement('input');
+    inp.value = txt; document.body.appendChild(inp); inp.select();
+    try { document.execCommand('copy'); toast('Link copiato: ' + txt); } catch (e2) { toast('Copia manualmente: ' + txt); }
+    inp.remove();
+  }
+}
+
+function copyRef() { if (myLink) copyText(myLink); }
+
+function share(kind) {
+  if (!myLink) { toast('Carico la pagina prima di condividere...'); return; }
+  const text = 'QuantX AI: reddito algoritmico con una squadra su tre livelli. Registrati con questo invito: ' + myLink;
+  if (kind === 'wa') window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+  else if (kind === 'tg') window.open('https://t.me/share/url?url=' + encodeURIComponent(myLink) + '&text=' + encodeURIComponent(text), '_blank');
+  else if (kind === 'sms') window.location.href = 'sms:?&body=' + encodeURIComponent(text);
+  else if (kind === 'x') window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank');
+}
+
 async function load() {
   const me = await api('/api/me');
-  if (me.error) { location.href = 'app.html'; return; }
-  if (me.user && me.user.isAdmin) {
-    const box = $('nav-links');
-    const a = document.createElement('a');
-    a.id = 'nav-admin';
-    a.href = 'admin.html';
-    a.className = 'btn btn-ghost';
-    a.style.textDecoration = 'none';
-    a.textContent = 'Admin';
-    box.insertBefore(a, box.firstChild);
+  if (me.error) {
+    // Ospite: la pagina resta visibile, le sezioni personali mostrano solo la guida
+    const g = (id, txt) => { const el = $(id); if (el) el.textContent = txt; };
+    g('ref-link', 'Accedi per vedere il tuo link invito');
+    g('st-total', '—'); g('st-active', '—'); g('st-earned', '—'); g('st-code', '—');
+    g('invite-text', 'Crea un conto dall\'area riservata: il link invito personale viene generato subito dopo l\'iscrizione e la squadra si costruisce da lì.');
+    const box = $('friends-list');
+    if (box) box.innerHTML = '<p style="color:var(--muted)">Accedi per vedere la tua squadra, i tuoi inviti e le tue commissioni.</p>';
+  } else {
+    if (me.user && me.user.isAdmin) {
+      const box = $('nav-links');
+      const a = document.createElement('a');
+      a.href = 'admin.html';
+      a.textContent = 'Controlli Amministratore';
+      a.style.fontWeight = '700';
+      box.prepend(a);
+    }
+
+    const d = await api('/api/referrals');
+    myLink = d.link ? (location.origin + d.link) : '';
+    $('ref-link').textContent = myLink ? myLink.replace(/^https?:\/\//, '') : '—';
+
+    $('st-total').textContent = itNum(d.count);
+    $('st-active').textContent = itNum(d.activeCount);
+    $('st-earned').textContent = fmt(d.earned || 0);
+    $('st-code').textContent = d.code || '—';
+
+    $('invite-text').textContent = d.list.length
+      ? 'Nota: le commissioni sono riconosciute SOLO sui versamenti confermati degli invitati. La registrazione da sola non genera compensi.'
+      : 'Non hai ancora invitato nessuno: condividi il link sopra per iniziare. Tasso squadra: 17% / 5% / 2% sui versamenti confermati.';
+
+    // Riquadro squadra a 3 livelli (dati reali)
+    if (d.team) {
+      const line = (t) => itNum(t.active) + ' attivi · ' + itNum(t.deposits, 0) + ' USDT versati';
+      $('t1').textContent = line(d.team.l1);
+      $('t2').textContent = line(d.team.l2);
+      $('t3').textContent = line(d.team.l3);
+    }
+
+    // Lista invitati con i loro UNDERTEAM (livello 2 di squadra)
+    const box = $('friends-list');
+    if (!d.list.length) {
+      box.innerHTML = '<p style="color:var(--muted)">Nessun invitato registrato per il momento.</p>';
+    } else {
+      box.innerHTML = d.list.map(f => {
+        const sub = (f.level2 || []).length
+          ? '<div style="margin-top:10px; font-size:13px; color:var(--muted); border-top:1px dashed var(--border); padding-top:10px">'
+            + '<b style="color:var(--text); letter-spacing:.08em; text-transform:uppercase; font-size:11px">Squadra di ' + (f.name || 'invitato') + ' (' + (f.level2.length) + ')</b><br />'
+            + f.level2.map(s2 =>
+              s2.name
+              + (s2.active ? ' <span class="badge success">attivo</span>' : '')
+              + ' — ' + itNum(s2.deposited, 0) + ' USDT'
+              + ((s2.children || []).length ? ' · a sua volta ' + s2.children.length + ' invitati' : '')
+            ).join('<br />')
+            + '</div>'
+          : '';
+        return `
+        <div class="signal" style="flex-wrap:wrap">
+          <div class="info">
+            <h4>${f.name || 'Membro'} <span style="color:var(--muted); font-weight:400; font-size:13px">· dal ${String(f.since || '').slice(0, 10)}</span></h4>
+            <div class="meta">Versato: ${itNum(f.deposited, 0)} USDT${sub}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="color:var(--pos); font-weight:700">${f.active ? 'Attivo' : 'In attesa'}</div>
+            <div style="font-size:13px; color:var(--muted)">commissione ${fmt(f.bonus || 0)}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
   }
 
-  const refs = await api('/api/referrals');
-  if (refs.error) { toast('Errore nel caricamento dei dati'); return; }
-
-  $('st-total').textContent = refs.count;
-  $('st-active').textContent = refs.activeCount;
-  $('st-earned').textContent = fmt(refs.earned);
-  $('st-code').textContent = refs.code;
-
-  myLink = location.origin + '/app.html?ref=' + refs.code;
-  $('ref-link').textContent = myLink;
-  $('invite-text').textContent =
-    'Messaggio pronto: "Ti passo QuantX AI, gestione algoritmica del capitale. Registrati con il mio link: ' + myLink + '"';
-
-  const list = refs.list || [];
-  if (!list.length) {
-    $('friends-list').innerHTML = `
-      <p style="color:var(--muted); line-height:1.7">
-        Nessun contatto collegato. Condividi il link: quando un contatto effettua un versamento confermato,
-        la commissione del 17% viene accreditata sul saldo.
-      </p>`;
-    return;
-  }
-
-  $('friends-list').innerHTML = list.map(f => `
-    <div class="signal ${f.active ? 'active' : ''}" style="margin-bottom:10px">
-      <div class="info">
-        <h4>${f.name}</h4>
-        <div class="meta">
-          ${f.active
-            ? '<span class="win">Attivo</span> · versamento ' + fmt(f.deposited) + ' · commissione ' + fmt(f.bonus)
-            : 'Registrato, senza versamenti — la commissione matura al primo versamento confermato'}
-        </div>
-      </div>
-      <div style="text-align:right">
-        <div style="color:var(--pos); font-weight:600">${fmt(f.bonus)}</div>
-        <div style="color:var(--muted); font-size:12px">commissione</div>
-      </div>
-    </div>`).join('');
+  // Anteprima classifica live (pubblica: la competizione rende viva la rete)
+  try {
+    const r = await fetch('/api/leaderboard');
+    const lb = await r.json();
+    const rows = (lb.board || []).slice(0, 5);
+    const tb = document.querySelector('#ladder-preview tbody');
+    if (rows.length) {
+      tb.innerHTML = rows.map(x => `
+        <tr${x.rank === 1 ? ' class="medal-1"' : x.rank === 2 ? ' class="medal-2"' : x.rank === 3 ? ' class="medal-3"' : ''}>
+          <td class="rank">${x.rank}</td>
+          <td>${x.name}</td>
+          <td class="num">${x.invitedActive}</td>
+          <td class="num">${itNum(x.deposits, 0)} USDT</td>
+        </tr>`).join('');
+    } else {
+      tb.innerHTML = '<tr><td colspan="4" style="color:var(--muted)">La classifica parte con i primi membri attivi.</td></tr>';
+    }
+  } catch (e) { /* classifica offline */ }
 }
 
-function copyRef() {
-  if (navigator.clipboard) navigator.clipboard.writeText(myLink);
-  else { const ta = document.createElement('textarea'); ta.value = myLink; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
-  toast('Link copiato negli appunti.');
-}
-
-function share(channel) {
-  const msg = 'Ti passo QuantX AI: gestione algoritmica del capitale. Registrati con il mio link: ' + myLink;
-  if (channel === 'wa') window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
-  else if (channel === 'tg') window.open('https://t.me/share/url?url=' + encodeURIComponent(myLink) + '&text=' + encodeURIComponent(msg), '_blank');
-  else if (channel === 'sms') window.location.href = 'sms:?&body=' + encodeURIComponent(msg);
-  else copyRef();
-}
-
-function logout() { localStorage.removeItem(TOKEN_KEY); location.href = 'index.html'; }
-
-window.addEventListener('DOMContentLoaded', () => {
-  if (!token) { location.href = 'app.html'; return; }
-  load();
-});
+load();

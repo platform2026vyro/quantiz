@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1100" preserveAspectRatio="xMidYMid slice">
+  <!-- Poster "Team": quattro atleti sulla pista all'alba -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#191919"/>
+      <stop offset="0.5" stop-color="#37222a"/>
+      <stop offset="0.78" stop-color="#7e1e2d"/>
+      <stop offset="1" stop-color="#c8102e"/>
+    </linearGradient>
+    <linearGradient id="track" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8e0c20"/>
+      <stop offset="1" stop-color="#3d0a13"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="900" height="1100" fill="url(#sky)"/>
+  <!-- sole basso dietro gli atleti -->
+  <circle cx="560" cy="500" r="150" fill="#ffffff" opacity="0.82"/>
+  <circle cx="560" cy="500" r="220" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="2"/>
+
+  <!-- pista -->
+  <rect x="0" y="760" width="900" height="340" fill="url(#track)"/>
+  <g stroke="#ffffff" stroke-opacity="0.22" stroke-width="4">
+    <path d="M0 830 H900 M0 906 H900 M0 982 H900"/>
+  </g>
+
+  <!-- quattro atleti (pittogrammi) -->
+  <g fill="#0e0e10">
+    <g transform="translate(120,530) scale(0.9)">
+      <circle cx="60" cy="0" r="22"/><path d="M40 26 L 84 30 L 96 96 L 70 170 L 40 170 L 52 96 L 20 60 Z"/>
+    </g>
+    <g transform="translate(320,500)">
+      <circle cx="60" cy="0" r="22"/><path d="M40 26 L 84 30 L 96 96 L 70 174 L 40 174 L 52 96 L 20 60 Z"/>
+    </g>
+    <g transform="translate(520,540) scale(0.86)">
+      <circle cx="60" cy="0" r="22"/><path d="M40 26 L 84 30 L 96 96 L 70 168 L 40 168 L 52 96 L 20 60 Z"/>
+    </g>
+    <g transform="translate(690,570) scale(0.8)">
+      <circle cx="60" cy="0" r="22"/><path d="M40 26 L 84 30 L 96 96 L 70 160 L 40 160 L 52 96 L 20 60 Z"/>
+    </g>
+  </g>
+  <g fill="#c8102e">
+    <rect x="386" y="520" width="34" height="16" rx="8"/>
+    <rect x="200" y="560" width="30" height="14" rx="7" opacity="0.9"/>
+  </g>
+</svg>

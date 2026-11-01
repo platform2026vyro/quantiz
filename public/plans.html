@@ -4,107 +4,55 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>QuantX AI — Piani e condizioni</title>
+  <link rel="icon" type="image/svg+xml" href="logo.svg" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
     <nav class="nav">
-      <div class="logo" onclick="location.href='index.html'">QUANT<span>X</span> AI</div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap">
-        <a href="index.html" class="btn btn-ghost" style="text-decoration:none">Home</a>
-        <a href="amici.html" class="btn btn-ghost" style="text-decoration:none">Affiliazione</a>
+      <div class="logo" onclick="location.href='index.html'">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 44" role="img" aria-label="QuantX AI">
+          <path fill="#111111" d="M2 30 C 26 36.5, 62 31.5, 122 3.5 C 100 25, 58 38.5, 24 38 C 15 38, 7 35, 2 30 Z"/>
+          <path fill="none" stroke="#c8102e" stroke-width="6.5" stroke-linecap="round" d="M30 5.5 C 46 20, 64 31, 88 39.5"/>
+        </svg>
+        <span class="logo-word">QUANT<b>X</b>&nbsp;AI</span>
+      </div>
+      <div class="nav-links">
+        <a href="index.html">Home</a>
+        <a href="amici.html">Affiliazione</a>
+        <a href="leaderboard.html">Classifica</a>
+        <a href="elite.html">Elite</a>
+        <a href="supporto.html">Supporto</a>
+      </div>
+      <div class="nav-actions">
         <a href="app.html" class="btn btn-ghost" style="text-decoration:none">Area riservata</a>
-        <button class="btn btn-primary" onclick="location.href='app.html?mode=register'">Apri un conto</button>
+        <a href="app.html?mode=register" class="btn btn-primary" style="text-decoration:none">Apri un conto</a>
       </div>
     </nav>
 
     <section class="hero" style="padding:48px 0 32px; text-align:left">
       <div class="badge">Piani e condizioni</div>
-      <h1 style="font-size:clamp(30px,4vw,44px)">Un livello per ogni <span class="grad">capitale</span></h1>
-      <p style="margin:0; max-width:720px">
-        Importo di attivazione, rendimento giornaliero e numero di ordini sono fissati per ciascun livello.
-        Le condizioni di prelievo sono le stesse per tutti i piani e sono indicate in fondo alla pagina.
+      <h1 style="font-size:clamp(34px,4.4vw,54px)">Un livello per ogni <span class="grad">capitale</span></h1>
+      <p style="margin:0; max-width:760px">
+        Dieci livelli, da 500 a 25.000.000 USDT. Importo di attivazione, rendimento giornaliero e
+        numero di ordini sono fissati per ciascun livello. Le condizioni di prelievo sono le stesse
+        per tutti i piani e sono indicate in fondo alla pagina.
       </p>
     </section>
 
-    <div class="plans-grid">
-      <div class="card plan-card">
-        <div class="plan-name">VIP 1</div>
-        <div class="plan-price">500 <span>USDT</span></div>
-        <div class="plan-yield">1,5% <small>al giorno</small></div>
-        <ul class="plan-features">
-          <li>4 ordini giornalieri</li>
-          <li>Rendimento giornaliero: 7,5 USDT</li>
-          <li>Prelievo minimo 30 USDT · commissione 2,5% (min. 2)</li>
-          <li>Assistenza via Telegram</li>
-        </ul>
-        <button class="btn btn-ghost btn-block" onclick="buyPlan(1)">Attiva VIP 1</button>
-      </div>
+    <div class="plans-grid" id="plans-grid">
+      <div class="card plan-card" style="grid-column:1/-1; color:var(--muted)">Caricamento piani…</div>
+    </div>
 
-      <div class="card plan-card featured">
-        <div class="plan-badge">Consigliato</div>
-        <div class="plan-name">VIP 2</div>
-        <div class="plan-price">3.000 <span>USDT</span></div>
-        <div class="plan-yield">2,0% <small>al giorno</small></div>
-        <ul class="plan-features">
-          <li>5 ordini giornalieri</li>
-          <li>Rendimento giornaliero: 60 USDT</li>
-          <li>Upgrade con 5 membri attivi · bonus 30 USDT</li>
-          <li>Prelievi prioritari</li>
-        </ul>
-        <button class="btn btn-primary btn-block" onclick="buyPlan(2)">Attiva VIP 2</button>
-      </div>
-
-      <div class="card plan-card">
-        <div class="plan-name">VIP 3</div>
-        <div class="plan-price">10.000 <span>USDT</span></div>
-        <div class="plan-yield">2,5% <small>al giorno</small></div>
-        <ul class="plan-features">
-          <li>6 ordini giornalieri</li>
-          <li>Rendimento giornaliero: 250 USDT</li>
-          <li>Upgrade con 10 membri attivi · bonus 60 USDT</li>
-          <li>Accesso anticipato alle nuove strategie</li>
-        </ul>
-        <button class="btn btn-ghost btn-block" onclick="buyPlan(3)">Attiva VIP 3</button>
-      </div>
-
-      <div class="card plan-card">
-        <div class="plan-name">VIP 4</div>
-        <div class="plan-price">30.000 <span>USDT</span></div>
-        <div class="plan-yield">3,0% <small>al giorno</small></div>
-        <ul class="plan-features">
-          <li>7 ordini giornalieri</li>
-          <li>Rendimento giornaliero: 900 USDT</li>
-          <li>Upgrade con 15 membri attivi · bonus 120 USDT</li>
-          <li>Account manager dedicato</li>
-        </ul>
-        <button class="btn btn-ghost btn-block" onclick="buyPlan(4)">Attiva VIP 4</button>
-      </div>
-
-      <div class="card plan-card">
-        <div class="plan-name">VIP 5</div>
-        <div class="plan-price">100.000 <span>USDT</span></div>
-        <div class="plan-yield">3,5% <small>al giorno</small></div>
-        <ul class="plan-features">
-          <li>8 ordini giornalieri</li>
-          <li>Rendimento giornaliero: 3.500 USDT</li>
-          <li>Upgrade con 25 membri attivi · bonus 240 USDT</li>
-          <li>Prelievi prioritari (accredito 2–96 ore)</li>
-        </ul>
-        <button class="btn btn-ghost btn-block" onclick="buyPlan(5)">Attiva VIP 5</button>
-      </div>
-
-      <div class="card plan-card">
-        <div class="plan-name">VIP 6</div>
-        <div class="plan-price">1.000.000 <span>USDT</span></div>
-        <div class="plan-yield">4,0% <small>al giorno</small></div>
-        <ul class="plan-features">
-          <li>9 ordini giornalieri</li>
-          <li>Rendimento giornaliero: 40.000 USDT</li>
-          <li>Upgrade con 35 membri attivi · bonus 480 USDT</li>
-          <li>Commissioni di squadra 17% / 5% / 1%</li>
-        </ul>
-        <button class="btn btn-ghost btn-block" onclick="buyPlan(6)">Attiva VIP 6</button>
+    <div class="card" style="margin:24px 0">
+      <h2 style="font-size:17px; font-weight:600; margin-bottom:14px">Tabella dei livelli</h2>
+      <div class="adm-table-wrap">
+        <table class="level-table" id="level-table">
+          <thead>
+            <tr><th>Livello</th><th>Minimo</th><th>Resa/giorno</th><th>Ordini</th><th>Upgrade membri</th><th>Bonus upgrade</th></tr>
+          </thead>
+          <tbody><tr><td colspan="6" style="color:var(--muted)">Caricamento…</td></tr></tbody>
+        </table>
       </div>
     </div>
 
@@ -116,13 +64,13 @@
         <div><b style="color:var(--text)">Primo prelievo</b><br />dopo 20 ordini completati</div>
         <div><b style="color:var(--text)">Prelievi successivi</b><br />8 nuovi ordini tra un prelievo e l'altro</div>
         <div><b style="color:var(--text)">Sicurezza</b><br />24 ore di blocco dopo cambio password o email</div>
-        <div><b style="color:var(--text)">Accredito</b><br />da 2 a 96 ore dalla approvazione</div>
+        <div><b style="color:var(--text)">Accredito</b><br />da 2 a 96 ore dall'approvazione</div>
       </div>
     </div>
 
     <div class="card" style="margin:24px 0">
       <h2 style="font-size:17px; font-weight:600; margin-bottom:10px">Attivazione del piano</h2>
-      <p style="color:var(--muted); max-width:720px; line-height:1.7; margin-bottom:18px">
+      <p style="color:var(--muted); max-width:760px; line-height:1.7; margin-bottom:18px">
         1. Scegli il livello. 2. Versa l'importo dal pannello (carta o USDT). 3. Attiva il piano: l'importo viene scalato dal saldo
         e la posizione parte immediatamente. Il bonus di affiliazione è riconosciuto a chi ti ha invitato.
       </p>
@@ -133,9 +81,25 @@
     </div>
 
     <div class="footer">
-      <div><b style="color:var(--text)">QuantX AI</b> — Piani e condizioni contrattuali.</div>
-      <div>I rendimenti indicati sono contrattuali e non costituiscono garanzia di risultato. Il capitale investito è soggetto a rischio.</div>
-      <div style="margin-top:8px"><a href="amici.html">Programma di affiliazione</a> · <a href="index.html">Home</a></div>
+      <div class="foot-grid">
+        <div>
+          <b style="color:var(--text)">QuantX AI</b> — Piani e condizioni contrattuali.
+          <div style="margin-top:10px; color:var(--muted-2); font-size:13px">10 livelli, da VIP 1 a VIP 10.</div>
+        </div>
+        <div>
+          <b style="display:block; color:var(--text); margin-bottom:8px">Riferimenti</b>
+          <a href="elite.html" style="display:block">Elite Arsenal</a>
+          <a href="amici.html" style="display:block">Programma di affiliazione</a>
+          <a href="supporto.html" style="display:block">Domande e risposte</a>
+        </div>
+        <div>
+          <b style="display:block; color:var(--text); margin-bottom:8px">Azioni</b>
+          <a href="index.html" style="display:block">Home</a>
+          <a href="app.html" style="display:block">Area riservata</a>
+          <a href="app.html?mode=register" style="display:block">Apri un conto</a>
+        </div>
+      </div>
+      <div class="fine">I rendimenti indicati sono contrattuali e non costituiscono garanzia di risultato. Il capitale investito è soggetto a rischio.</div>
     </div>
   </div>
 
@@ -157,28 +121,57 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // Piani allineati al modello attivo (VIP 1-6)
-    const PLANS = {
-      1: { name: 'VIP 1', amount: 500,     yieldMin: 1.5, yieldMax: 2.8, orders: 4 },
-      2: { name: 'VIP 2', amount: 3000,    yieldMin: 2.0, yieldMax: 3.3, orders: 5 },
-      3: { name: 'VIP 3', amount: 10000,   yieldMin: 2.5, yieldMax: 3.8, orders: 6 },
-      4: { name: 'VIP 4', amount: 30000,   yieldMin: 3.0, yieldMax: 4.3, orders: 7 },
-      5: { name: 'VIP 5', amount: 100000,  yieldMin: 3.5, yieldMax: 4.8, orders: 8 },
-      6: { name: 'VIP 6', amount: 1000000, yieldMin: 4.0, yieldMax: 5.3, orders: 9 },
-    };
-    let selectedPlan = null;
+    // I piani arrivano SEMPRE dall'API del modello attivo (VIP 1-10): niente dati duplicati
+    var PLANS = {};
+    var selectedPlan = null;
 
-    // Separatore delle migliaia (es. 3.000) indipendente dal locale del browser
     const nIt = (v) => String(v).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const nDec = (v) => String(v).replace('.', ',');
+
+    async function loadPlans() {
+      const res = await fetch('/api/plans');
+      const plans = await res.json();
+      PLANS = {};
+      plans.forEach(p => { PLANS[p.id] = p; });
+
+      const grid = document.getElementById('plans-grid');
+      grid.innerHTML = plans.map(p => `
+        <div class="plan-card${p.id === 2 ? ' featured' : ''}${p.id >= 8 ? ' quantum' : ''}">
+          ${p.id === 2 ? '<div class="plan-badge">Consigliato</div>' : ''}
+          ${p.id === 10 ? '<div class="plan-badge">Massimo livello</div>' : ''}
+          <div class="plan-name">${p.name}</div>
+          <div class="plan-price">${nIt(p.minDeposit)} <span>USDT</span></div>
+          <div class="plan-yield">${nDec(p.dailyYieldPct)}% <small>al giorno</small></div>
+          <ul class="plan-features">
+            <li>${p.ordersPerDay} ordini giornalieri</li>
+            <li>Resa giornaliera ${nDec(p.dailyYieldPct)}% – ${nDec(p.dailyYieldMax)}%</li>
+            ${p.upgradeMembers ? '<li>Upgrade con ' + p.upgradeMembers + ' membri attivi · bonus ' + nIt(p.upgradeBonus) + ' USDT</li>' : ''}
+            <li>Commissioni di squadra 17% / 5% / 2%</li>
+            ${p.id >= 8 ? '<li>Elite Arsenal: assistenza dedicata e prelievi prioritari</li>' : ''}
+          </ul>
+          <button class="btn ${p.id === 2 || p.id >= 8 ? 'btn-primary' : 'btn-ghost'} btn-block" onclick="buyPlan(${p.id})">Attiva ${p.name}</button>
+        </div>`).join('');
+
+      // Tabella dei livelli
+      const tb = document.querySelector('#level-table tbody');
+      tb.innerHTML = plans.map(p => `
+        <tr>
+          <td><b>${p.name}</b></td>
+          <td>${nIt(p.minDeposit)} USDT</td>
+          <td>${nDec(p.dailyYieldPct)}% – ${nDec(p.dailyYieldMax)}%</td>
+          <td>${p.ordersPerDay}/giorno</td>
+          <td>${p.upgradeMembers ? p.upgradeMembers + ' attivi' : '—'}</td>
+          <td>${p.upgradeBonus ? nIt(p.upgradeBonus) + ' USDT' : '—'}</td>
+        </tr>`).join('');
+    }
 
     function buyPlan(id) {
       selectedPlan = id;
       const p = PLANS[id];
-      const n = (v) => String(v).replace('.', ',');
       document.getElementById('plan-modal-title').textContent = 'Piano ' + p.name;
       document.getElementById('plan-modal-text').textContent =
-        'Importo di attivazione ' + nIt(p.amount) + ' USDT · rendimento giornaliero ' +
-        n(p.yieldMin) + '% – ' + n(p.yieldMax) + '% · ' + p.orders + ' ordini al giorno. ' +
+        'Importo di attivazione ' + nIt(p.minDeposit) + ' USDT · rendimento giornaliero ' +
+        nDec(p.dailyYieldPct) + '% – ' + nDec(p.dailyYieldMax) + '% · ' + p.ordersPerDay + ' ordini al giorno. ' +
         'L\'importo viene scalato dal saldo disponibile: versa prima il capitale dal pannello o sull\'indirizzo indicato, ' +
         'poi conferma l\'attivazione. Puoi mantenere più posizioni contemporaneamente.';
       document.getElementById('modal-plan').classList.add('show');
@@ -211,10 +204,15 @@
       }
       document.getElementById('modal-plan').classList.remove('show');
       const t = document.getElementById('toast');
-      t.textContent = 'Piano ' + data.plan.name + ' attivato: ' + data.position.amount + ' EUR in posizione.';
+      t.textContent = 'Piano ' + data.plan.name + ' attivato: ' + data.position.amount + ' USDT in posizione.';
       t.classList.add('show');
       setTimeout(() => { location.href = 'app.html'; }, 2200);
     }
+
+    loadPlans().catch(() => {
+      document.getElementById('plans-grid').innerHTML =
+        '<div class="plan-card" style="grid-column:1/-1">Piani temporaneamente non disponibili. Ricarica la pagina.</div>';
+    });
   </script>
   <script src="live.js"></script>
 </body>

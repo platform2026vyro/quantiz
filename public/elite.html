@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuantX AI — Elite Arsenal</title>
+  <link rel="icon" type="image/svg+xml" href="logo.svg" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <nav class="nav">
+      <div class="logo" onclick="location.href='index.html'">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 44" role="img" aria-label="QuantX AI">
+          <path fill="#111111" d="M2 30 C 26 36.5, 62 31.5, 122 3.5 C 100 25, 58 38.5, 24 38 C 15 38, 7 35, 2 30 Z"/>
+          <path fill="none" stroke="#c8102e" stroke-width="6.5" stroke-linecap="round" d="M30 5.5 C 46 20, 64 31, 88 39.5"/>
+        </svg>
+        <span class="logo-word">QUANT<b>X</b>&nbsp;AI</span>
+      </div>
+      <div class="nav-links">
+        <a href="plans.html">Piani</a>
+        <a href="amici.html">Affiliazione</a>
+        <a href="leaderboard.html">Classifica</a>
+        <a href="supporto.html">Supporto</a>
+      </div>
+      <div class="nav-actions">
+        <a href="app.html" class="btn btn-ghost" style="text-decoration:none">Accedi</a>
+        <a href="app.html?mode=register" class="btn btn-primary" style="text-decoration:none">Apri un conto</a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div class="badge">Solo per capitali rilevanti</div>
+      <h1>ELITE <span class="grad">ARSENAL</span></h1>
+      <p>
+        I tre gradi supremi della piattaforma: VIP 8, VIP 9 e VIP 10. Allocazioni da cinque a
+        venticinque milioni, assistenza dedicata, prelievi prioritari e condizioni scritte per grandi capitali.
+      </p>
+      <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap">
+        <a class="btn btn-primary" style="text-decoration:none" href="plans.html">Vedi tutti i livelli</a>
+        <a class="btn btn-ghost" style="text-decoration:none" href="supporto.html">Parla col team Elite</a>
+      </div>
+    </section>
+
+    <div class="tiles tiles-3">
+      <div class="tile">
+        <img class="tile-photo" src="img/elite-vault.svg" alt="Cassaforte blindata QuantX" loading="lazy" />
+        <span class="tile-shade" aria-hidden="true"></span>
+        <span class="tile-tag">Grado VIII</span>
+        <span class="tile-vert">Elite Arsenal</span>
+        <div class="tile-inner">
+          <h3>VIP 8<br />VAULT</h3>
+          <p>5.000.000 USDT allocati · 10 ordini al giorno · resa 4,5%–6,0%. Il primo grado dell'arsenale: assistenza via desk dedicato.</p>
+          <a class="btn btn-ghost" href="plans.html">Apri il Vault</a>
+        </div>
+      </div>
+      <div class="tile aqua">
+        <img class="tile-photo" src="img/elite-meridian.svg" alt="Globo meridiani QuantX" loading="lazy" />
+        <span class="tile-shade" aria-hidden="true"></span>
+        <span class="tile-tag">Grado IX</span>
+        <span class="tile-vert">Elite Arsenal</span>
+        <div class="tile-inner">
+          <h3>VIP 9<br />MERIDIAN</h3>
+          <p>10.000.000 USDT allocati · 11 ordini al giorno · resa 4,7%–6,5%. Accesso anticipato alle nuove strategie prima del lancio.</p>
+          <a class="btn btn-ghost" href="plans.html">Entra in Meridian</a>
+        </div>
+      </div>
+      <div class="tile warm">
+        <img class="tile-photo" src="img/elite-infinite.svg" alt="Simbolo infinito metallico QuantX" loading="lazy" />
+        <span class="tile-shade" aria-hidden="true"></span>
+        <span class="tile-tag">Grado X · Massimo livello</span>
+        <span class="tile-vert">Infinite</span>
+        <div class="tile-inner">
+          <h3>VIP 10<br />INFINITE</h3>
+          <p>25.000.000 USDT allocati · 12 ordini al giorno · resa 5,0%–7,0%. Il massimo contrattuale della piattaforma, con tutto ciò che segue.</p>
+          <a class="btn btn-ghost" href="plans.html">Raggiungi Infinite</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="band">
+      <div class="inner">
+        <h2 class="section-title" style="margin-top:0">L'arsenale completo</h2>
+        <p class="section-sub">Tutte le soglie e i vantaggi, presi in tempo reale dai livelli del modello attivo.</p>
+        <div class="card card-white" style="padding:0">
+          <div class="adm-table-wrap">
+            <table class="level-table" id="elite-table">
+              <thead>
+                <tr><th>Grado</th><th>Minimo</th><th>Resa/giorno</th><th>Ordini</th><th>Upgrade membri</th><th>Bonus upgrade</th></tr>
+              </thead>
+              <tbody><tr><td colspan="6" style="color:var(--muted)">Caricamento…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="section-title">Cosa include l'Elite</h2>
+    <p class="section-sub">Servizi riservati ai gradi VIII, IX e X.</p>
+    <div class="features">
+      <div class="feature">
+        <div class="icon">Elite 01</div>
+        <h3>Desk dedicato</h3>
+        <p>Copertura di assistenza prioritaria su Telegram e risposta anticipata: i gradi Elite non passano dalla coda del supporto generale.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">Elite 02</div>
+        <h3>Prelievi in prima linea</h3>
+        <p>Le richieste di prelievo Elite vengono approvate per prime dentro la finestra di 2–96 ore del contratto.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">Elite 03</div>
+        <h3>Nuove strategie in anteprima</h3>
+        <p>Le nuove linee sistematiche vengono attivate per i gradi Elite prima di essere rese disponibili ai livelli standard.</p>
+      </div>
+      <div class="feature">
+        <div class="icon">Elite 04</div>
+        <h3>Squadra potenziata</h3>
+        <p>Fino a 150 membri attivi per l'upgrade al massimo grado, con bonus di upgrade che arriva a 6.000 USDT.</p>
+      </div>
+    </div>
+
+    <div class="card referral-cta" style="margin:40px 0; display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap">
+      <div>
+        <h2 style="font-size:26px; font-weight:800; letter-spacing:-0.03em; margin-bottom:8px">Percorso verso l'Elite</h2>
+        <p style="color:var(--muted); max-width:660px; margin:0; line-height:1.7">
+          Si entra versando il capitale di un grado Elite dal pannello, oppure salendo per gradi:
+          con una squadra attiva che deposita, gli upgrade avanzano automaticamente il tuo conto fino a VIP 10.
+        </p>
+      </div>
+      <a class="btn btn-primary" style="text-decoration:none" href="app.html?mode=register">Apri un conto</a>
+    </div>
+
+    <div class="footer">
+      <div class="foot-grid">
+        <div>
+          <b style="color:var(--text)">QuantX AI</b> — Elite Arsenal: i gradi VIII, IX, X.
+        </div>
+        <div>
+          <b style="display:block; color:var(--text); margin-bottom:8px">Riferimenti</b>
+          <a href="plans.html" style="display:block">Piani e condizioni</a>
+          <a href="leaderboard.html" style="display:block">Classifica</a>
+          <a href="amici.html" style="display:block">Affiliazione</a>
+        </div>
+        <div>
+          <b style="display:block; color:var(--text); margin-bottom:8px">Azioni</b>
+          <a href="app.html" style="display:block">Area riservata</a>
+          <a href="supporto.html" style="display:block">Supporto</a>
+        </div>
+      </div>
+      <div class="fine">Le procedure e i vantaggi Elite sono condizionati alle regole di piattaforma (prelievi, commissioni e squadre) e non costituiscono garanzia di risultato.</div>
+    </div>
+  </div>
+
+  <script>
+    const itNum = (n, d = 0) => {
+      const fixed = Number(n || 0).toFixed(d);
+      const parts = fixed.split('.');
+      return parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (parts[1] ? ',' + parts[1] : '');
+    };
+    (async () => {
+      try {
+        const res = await fetch('/api/plans');
+        const plans = await res.json();
+        const elite = plans.filter(p => p.id >= 8);
+        document.querySelector('#elite-table tbody').innerHTML = elite.map(p => `
+          <tr>
+            <td><b>${p.name}</b></td>
+            <td>${itNum(p.minDeposit)} USDT</td>
+            <td>${String(p.dailyYieldPct).replace('.', ',')}% – ${String(p.dailyYieldMax).replace('.', ',')}%</td>
+            <td>${p.ordersPerDay}/giorno</td>
+            <td>${p.upgradeMembers ? p.upgradeMembers + ' attivi' : '—'}</td>
+            <td>${p.upgradeBonus ? itNum(p.upgradeBonus) + ' USDT' : '—'}</td>
+          </tr>`).join('');
+      } catch (e) {
+        document.querySelector('#elite-table tbody').innerHTML =
+          '<tr><td colspan="6" style="color:var(--muted)">Live temporaneamente non disponibile.</td></tr>';
+      }
+    })();
+  </script>
+  <script src="live.js"></script>
+</body>
+</html>

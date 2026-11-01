@@ -4,13 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>QuantX AI — Area riservata</title>
+  <link rel="icon" type="image/svg+xml" href="logo.svg" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <!-- ============ AUTH (login/register) ============ -->
   <div id="auth-view" class="auth-wrap" style="display:none">
     <div class="card auth-card">
-      <div class="logo" style="margin-bottom:22px">QUANT<span>X</span> AI</div>
+      <div class="logo" style="margin-bottom:22px">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 44" role="img" aria-label="QuantX AI">
+          <path fill="#111111" d="M2 30 C 26 36.5, 62 31.5, 122 3.5 C 100 25, 58 38.5, 24 38 C 15 38, 7 35, 2 30 Z"/>
+          <path fill="none" stroke="#c8102e" stroke-width="6.5" stroke-linecap="round" d="M30 5.5 C 46 20, 64 31, 88 39.5"/>
+        </svg>
+        <span class="logo-word">QUANT<b>X</b>&nbsp;AI</span>
+      </div>
       <h2 id="auth-title" style="margin-bottom:18px; font-size:19px; font-weight:600">Accedi all'area riservata</h2>
       <div class="form">
         <div id="reg-name-wrap" style="display:none">
@@ -43,10 +50,19 @@
   <!-- ============ DASHBOARD ============ -->
   <div id="dash-view" class="container" style="display:none">
     <nav class="nav">
-      <div class="logo" onclick="location.href='index.html'">QUANT<span>X</span> AI</div>
+      <div class="logo" onclick="location.href='index.html'">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 44" role="img" aria-label="QuantX AI">
+          <path fill="#111111" d="M2 30 C 26 36.5, 62 31.5, 122 3.5 C 100 25, 58 38.5, 24 38 C 15 38, 7 35, 2 30 Z"/>
+          <path fill="none" stroke="#c8102e" stroke-width="6.5" stroke-linecap="round" d="M30 5.5 C 46 20, 64 31, 88 39.5"/>
+        </svg>
+        <span class="logo-word">QUANT<b>X</b>&nbsp;AI</span>
+      </div>
       <div id="nav-links" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
         <a href="plans.html" class="btn btn-ghost" style="text-decoration:none">Piani</a>
         <a href="amici.html" class="btn btn-ghost" style="text-decoration:none">Affiliazione</a>
+        <a href="leaderboard.html" class="btn btn-ghost" style="text-decoration:none">Classifica</a>
+        <a href="elite.html" class="btn btn-ghost" style="text-decoration:none">Elite</a>
+        <a href="supporto.html" class="btn btn-ghost" style="text-decoration:none">Supporto</a>
         <div class="status-pill"><span class="status-dot"></span> Conto attivo</div>
         <button class="btn btn-ghost" onclick="logout()">Esci</button>
       </div>

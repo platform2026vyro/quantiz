@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1100" preserveAspectRatio="xMidYMid slice">
+  <!-- Poster "Meridian": globo wireframe con meridiani rossi -->
+  <defs>
+    <radialGradient id="mBg" cx="0.5" cy="0.36" r="0.95">
+      <stop offset="0" stop-color="#131a22"/>
+      <stop offset="0.65" stop-color="#0a0f14"/>
+      <stop offset="1" stop-color="#05070a"/>
+    </radialGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#c8102e" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#c8102e" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="globeClip"><circle cx="450" cy="520" r="300"/></clipPath>
+  </defs>
+
+  <rect width="900" height="1100" fill="url(#mBg)"/>
+  <circle cx="450" cy="520" r="430" fill="url(#halo)"/>
+
+  <!-- sfere di riferimento -->
+  <circle cx="450" cy="520" r="300" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="2.5"/>
+  <circle cx="450" cy="520" r="236" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="2"/>
+
+  <!-- meridiani -->
+  <g clip-path="url(#globeClip)" stroke="#c8102e" fill="none">
+    <g stroke-width="3" stroke-opacity="0.9">
+      <ellipse cx="450" cy="520" rx="90" ry="300"/>
+      <ellipse cx="450" cy="520" rx="180" ry="300"/>
+      <ellipse cx="450" cy="520" rx="260" ry="300"/>
+      <ellipse cx="450" cy="520" rx="36" ry="300"/>
+    </g>
+    <g stroke-width="2" stroke-opacity="0.5">
+      <ellipse cx="450" cy="520" rx="300" ry="90"/>
+      <ellipse cx="450" cy="520" rx="300" ry="180"/>
+      <ellipse cx="450" cy="520" rx="300" ry="252"/>
+    </g>
+  </g>
+
+  <!-- assi -->
+  <path d="M450 140 L 450 900" stroke="#ffffff" stroke-opacity="0.25" stroke-width="2" stroke-dasharray="2 10"/>
+
+  <!-- placche continentali stilizzate -->
+  <g fill="#191d23" opacity="0.9" clip-path="url(#globeClip)">
+    <path d="M330 350 C 390 320, 470 330, 500 380 C 520 420, 480 460, 420 450 C 370 442, 320 400, 330 350 Z"/>
+    <path d="M540 560 C 590 540, 640 570, 640 620 C 640 668, 590 690, 550 670 C 520 652, 515 580, 540 560 Z"/>
+    <path d="M340 640 C 380 620, 430 640, 430 690 C 430 730, 380 748, 350 726 C 325 706, 318 655, 340 640 Z"/>
+  </g>
+
+  <!-- nodo QuantX -->
+  <circle cx="450" cy="520" r="10" fill="#c8102e"/>
+  <circle cx="560" cy="430" r="6" fill="#ffffff"/>
+  <circle cx="360" cy="640" r="6" fill="#ffffff"/>
+</svg>

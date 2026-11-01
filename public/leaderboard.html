@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuantX AI — Classifica</title>
+  <link rel="icon" type="image/svg+xml" href="logo.svg" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <nav class="nav">
+      <div class="logo" onclick="location.href='index.html'">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 44" role="img" aria-label="QuantX AI">
+          <path fill="#111111" d="M2 30 C 26 36.5, 62 31.5, 122 3.5 C 100 25, 58 38.5, 24 38 C 15 38, 7 35, 2 30 Z"/>
+          <path fill="none" stroke="#c8102e" stroke-width="6.5" stroke-linecap="round" d="M30 5.5 C 46 20, 64 31, 88 39.5"/>
+        </svg>
+        <span class="logo-word">QUANT<b>X</b>&nbsp;AI</span>
+      </div>
+      <div class="nav-links">
+        <a href="plans.html">Piani</a>
+        <a href="amici.html">Affiliazione</a>
+        <a href="elite.html">Elite</a>
+        <a href="supporto.html">Supporto</a>
+      </div>
+      <div class="nav-actions">
+        <a href="app.html" class="btn btn-ghost" style="text-decoration:none">Accedi</a>
+        <a href="app.html?mode=register" class="btn btn-primary" style="text-decoration:none">Apri un conto</a>
+      </div>
+    </nav>
+
+    <section class="hero" style="padding:48px 0 28px; text-align:left">
+      <div class="badge">Classifica della rete</div>
+      <h1 style="font-size:clamp(34px,4.4vw,54px)">Chi costruisce, <span class="grad">comanda</span></h1>
+      <p style="margin:0; max-width:760px">
+        I primi 20 membri ordinati per invitati attivi e versamenti della rete. Nomi mascherati,
+        dati reali presi dal registro della piattaforma: niente classifiche di facciata.
+      </p>
+    </section>
+
+    <div class="card" style="margin-top:8px">
+      <table class="ladder" id="lb-table">
+        <thead>
+          <tr><th>#</th><th>Membro</th><th>Invitati</th><th>Attivi</th><th>Rete versata</th><th>Capitale allocato</th><th>Score</th></tr>
+        </thead>
+        <tbody><tr><td colspan="7" style="color:var(--muted)">Caricamento…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="band" style="margin-top:40px">
+      <div class="inner">
+        <h2 class="section-title" style="margin-top:0">Come si sale</h2>
+        <p class="section-sub">Il punteggio premia prima le persone attive, poi il capitale.</p>
+        <div class="features">
+          <div class="feature">
+            <div class="icon">Regola 01</div>
+            <h3>Invitati attivi</h3>
+            <p>Ogni invitato diretto che versa effettivamente vale +10 punti di score. Una rete attiva pesa più di un deposito singolo.</p>
+          </div>
+          <div class="feature">
+            <div class="icon">Regola 02</div>
+            <h3>Versamenti della rete</h3>
+            <p>Ogni 100 USDT di versamenti confermati della squadra vale +1 punto. Il capitale dei tuoi invitati lavora anche per la tua posizione.</p>
+          </div>
+          <div class="feature">
+            <div class="icon">Regola 03</div>
+            <h3>Vantaggi reali</h3>
+            <p>Con abbastanza membri attivi il conto sale di livello automaticamente (fino a VIP 10) e riceve il bonus di upgrade collegato: da 30 fino a 6.000 USDT.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card referral-cta" style="margin:40px 0; display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap">
+      <div>
+        <h2 style="font-size:26px; font-weight:800; letter-spacing:-0.03em; margin-bottom:8px">Chi entra nella classifica?</h2>
+        <p style="color:var(--muted); max-width:640px; margin:0 0 4px; line-height:1.7">
+          Chi condivide il proprio invito e costruisce una squadra che deposita davvero.
+          Commissioni su tre livelli: 17% · 5% · 2%.
+        </p>
+      </div>
+      <a class="btn btn-primary" style="text-decoration:none" href="amici.html">Prendi il tuo invito</a>
+    </div>
+
+    <div class="footer">
+      <div class="foot-grid">
+        <div>
+          <b style="color:var(--text)">QuantX AI</b> — Classifica della rete, aggiornata sui dati reali.
+        </div>
+        <div>
+          <b style="display:block; color:var(--text); margin-bottom:8px">Riferimenti</b>
+          <a href="amici.html" style="display:block">Affiliazione</a>
+          <a href="plans.html" style="display:block">Piani</a>
+          <a href="elite.html" style="display:block">Elite</a>
+        </div>
+        <div>
+          <b style="display:block; color:var(--text); margin-bottom:8px">Azioni</b>
+          <a href="app.html?mode=register" style="display:block">Apri un conto</a>
+          <a href="supporto.html" style="display:block">Supporto</a>
+        </div>
+      </div>
+      <div class="fine">La classifica mostra il nominativo mascherato e i dati aggregati di piattaforma. Nessun indirizzo email è esposto.</div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const itNum = (n, d = 0) => {
+      const fixed = Number(n || 0).toFixed(d);
+      const parts = fixed.split('.');
+      return parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (parts[1] ? ',' + parts[1] : '');
+    };
+
+    (async () => {
+      try {
+        const res = await fetch('/api/leaderboard');
+        const d = await res.json();
+        const tb = document.querySelector('#lb-table tbody');
+        const board = d.board || [];
+        if (!board.length) {
+          tb.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">Nessun membro in classifica per il momento: la corsa è aperta.</td></tr>';
+          return;
+        }
+        tb.innerHTML = board.map(x => `
+          <tr${x.rank === 1 ? ' class="medal-1"' : x.rank === 2 ? ' class="medal-2"' : x.rank === 3 ? ' class="medal-3"' : ''}>
+            <td class="rank">${x.rank}</td>
+            <td><b>${x.name}</b></td>
+            <td class="num">${x.invited}</td>
+            <td class="num">${x.invitedActive}</td>
+            <td class="num">${itNum(x.deposits, 0)} USDT</td>
+            <td class="num">${itNum(x.allocated, 0)} USDT</td>
+            <td class="num"><b>${itNum(x.score)}</b></td>
+          </tr>`).join('');
+      } catch (e) {
+        document.querySelector('#lb-table tbody').innerHTML =
+          '<tr><td colspan="7" style="color:var(--muted)">Classifica temporaneamente non disponibile.</td></tr>';
+      }
+    })();
+  </script>
+  <script src="live.js"></script>
+</body>
+</html>

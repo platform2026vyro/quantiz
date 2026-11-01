@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 44" role="img" aria-label="QuantX AI">
+  <!-- Marchio QuantX: swoosh ascendente (rendimento) attraversato dalla
+       diagonale rossa (l'incrocio dei mercati / l'arbitraggio). -->
+  <g>
+    <!-- tratto principale: curva in salita con punta verso l'alto -->
+    <path fill="#111111" d="M2 30 C 26 36.5, 62 31.5, 122 3.5 C 100 25, 58 38.5, 24 38 C 15 38, 7 35, 2 30 Z"/>
+    <!-- diagonale di incrocio: attraversa lo swoosh -->
+    <path fill="none" stroke="#c8102e" stroke-width="6.5" stroke-linecap="round" d="M30 5.5 C 46 20, 64 31, 88 39.5"/>
+  </g>
+</svg>

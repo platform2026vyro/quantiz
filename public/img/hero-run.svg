@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 760" preserveAspectRatio="xMidYMid slice">
+  <!-- Poster "Run": atleta stilizzato in corsa, DNA QuantX (nero/bianco/rosso) -->
+  <defs>
+    <linearGradient id="bgRun" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b0b0c"/>
+      <stop offset="0.55" stop-color="#16161a"/>
+      <stop offset="1" stop-color="#232327"/>
+    </linearGradient>
+    <linearGradient id="trail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c8102e" stop-opacity="0"/>
+      <stop offset="0.7" stop-color="#c8102e" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#c8102e" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="trailB" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="760" fill="url(#bgRun)"/>
+  <!-- reticolo tecnico di fondo -->
+  <g stroke="#ffffff" stroke-opacity="0.05">
+    <path d="M0 190 H1600 M0 380 H1600 M0 570 H1600"/>
+    <path d="M400 0 V760 M800 0 V760 M1200 0 V760"/>
+  </g>
+
+  <!-- scie di velocita' -->
+  <rect x="120" y="330" width="1080" height="10" rx="5" fill="url(#trail)" transform="rotate(-6 660 335)"/>
+  <rect x="220" y="430" width="980" height="8" rx="4" fill="url(#trailB)" transform="rotate(-6 710 434)"/>
+  <rect x="320" y="530" width="860" height="6" rx="3" fill="url(#trail)" transform="rotate(-6 750 533)"/>
+
+  <!-- atleta stilizzato in corsa (pittogramma Los Angeles '84 rivisto QuantX) -->
+  <g transform="translate(1030,150) rotate(-6)">
+    <circle cx="268" cy="26" r="34" fill="#ffffff"/>
+    <path d="M232 66 C 262 44, 306 58, 318 92 L 296 178 L 344 232 Z" fill="#ffffff"/>
+    <path d="M318 92 L 368 150 L 422 258 L 392 274 L 330 190 Z" fill="#ffffff"/>
+    <path d="M296 178 L 236 268 L 148 332 L 124 306 L 214 232 L 262 148 Z" fill="#c8102e"/>
+    <path d="M344 232 L 300 330 L 218 400 L 196 376 L 272 306 L 306 220 Z" fill="#ffffff"/>
+    <path d="M148 332 L 96 380 L 30 396 L 36 368 L 92 356 L 128 310 Z" fill="#ffffff"/>
+    <path d="M218 400 L 262 452 L 330 476 L 322 502 L 244 476 L 186 416 Z" fill="#ffffff"/>
+    <rect x="330" y="474" width="86" height="12" rx="6" transform="rotate(-12 330 474)" fill="#ffffff"/>
+    <rect x="28" y="392" width="86" height="12" rx="6" transform="rotate(8 28 392)" fill="#c8102e"/>
+  </g>
+
+  <!-- linea di terra -->
+  <rect x="0" y="712" width="1600" height="6" fill="#c8102e" opacity="0.85"/>
+</svg>

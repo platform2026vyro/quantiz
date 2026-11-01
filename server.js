@@ -168,18 +168,18 @@ const PLAN_MODEL_EIRIO = {
   WITHDRAW_MIN: 30,                       // importo minimo di prelievo
   WITHDRAW_FEE_PCT: 0.025,                // commissione 2,5%
   MIN_FEE: 2,                             // commissione minima
-  ORDERS_PER_DAY: { 1: 4, 2: 5, 3: 6, 4: 7, 5: 8, 6: 9 },   // ordini per livello
-  PROFIT_MIN: { 1: 0.015, 2: 0.020, 3: 0.025, 4: 0.030, 5: 0.035, 6: 0.040 },
-  PROFIT_MAX: { 1: 0.028, 2: 0.033, 3: 0.038, 4: 0.043, 5: 0.048, 6: 0.053 },
+  ORDERS_PER_DAY: { 1: 4, 2: 5, 3: 6, 4: 7, 5: 8, 6: 9, 7: 10, 8: 10, 9: 11, 10: 12 },   // ordini per livello
+  PROFIT_MIN: { 1: 0.015, 2: 0.020, 3: 0.025, 4: 0.030, 5: 0.035, 6: 0.040, 7: 0.043, 8: 0.045, 9: 0.047, 10: 0.050 },
+  PROFIT_MAX: { 1: 0.028, 2: 0.033, 3: 0.038, 4: 0.043, 5: 0.048, 6: 0.053, 7: 0.056, 8: 0.060, 9: 0.065, 10: 0.070 },
   LOSS_MIN: -0.012,
   LOSS_MAX: -0.004,
   ORDERS_REQUIRED_FIRST_WITHDRAWAL: 20,   // ordini richiesti prima del primo prelievo
   ORDERS_REQUIRED_AFTER_WITHDRAWAL: 8,    // ordini richiesti dopo ogni prelievo
   LOCK_HOURS_ON_CHANGE: 24,               // cambio password/email blocca i prelievi per 24 ore
   PAYOUT_MIN_HOURS: 2, PAYOUT_MAX_HOURS: 96,
-  UPGRADE_MEMBERS: { 2: 5, 3: 10, 4: 15, 5: 25, 6: 35 },    // membri diretti attivi
-  UPGRADE_BONUS: { 2: 30, 3: 60, 4: 120, 5: 240, 6: 480 },  // bonus di upgrade
-  TEAM_BONUS_PCT: { 1: 17, 2: 5, 3: 1 },                     // commissioni di squadra
+  UPGRADE_MEMBERS: { 2: 5, 3: 10, 4: 15, 5: 25, 6: 35, 7: 50, 8: 70, 9: 100, 10: 150 },    // membri diretti attivi
+  UPGRADE_BONUS: { 2: 30, 3: 60, 4: 120, 5: 240, 6: 480, 7: 800, 8: 1500, 9: 3000, 10: 6000 },  // bonus di upgrade
+  TEAM_BONUS_PCT: { 1: 17, 2: 5, 3: 2 },                // commissioni di squadra (3 livelli, sul versamento)
   REF_BONUS_REQUIRED: true,
 };
 
@@ -228,12 +228,16 @@ function migrate() {
       daily_yield_pct = excluded.daily_yield_pct, ref_bonus_pct = excluded.ref_bonus_pct, color = excluded.color, icon = excluded.icon`);
   if (eirioRow && eirioRow.value === 'eirio') {
     const eirioPlans = [
-      [1, 'VIP 1', 500, 500, 1.5, 17, '#22d3ee', '⚡'],
-      [2, 'VIP 2', 3000, 3000, 2.0, 17, '#8b5cf6', '📈'],
-      [3, 'VIP 3', 10000, 10000, 2.5, 17, '#f59e0b', '💠'],
-      [4, 'VIP 4', 30000, 30000, 3.0, 17, '#f43f5e', '💎'],
-      [5, 'VIP 5', 100000, 100000, 3.5, 17, '#22ff88', '👑'],
-      [6, 'VIP 6', 1000000, 1000000, 4.0, 17, '#22ff88', '🏆'],
+      [1,  'VIP 1',  500,       500,       1.5, 17, '#22d3ee', '⚡'],
+      [2,  'VIP 2',  3000,      3000,      2.0, 17, '#8b5cf6', '📈'],
+      [3,  'VIP 3',  10000,     10000,     2.5, 17, '#f59e0b', '💠'],
+      [4,  'VIP 4',  30000,     30000,     3.0, 17, '#f43f5e', '💎'],
+      [5,  'VIP 5',  100000,    100000,    3.5, 17, '#22ff88', '👑'],
+      [6,  'VIP 6',  1000000,   1000000,   4.0, 17, '#38bdf8', '🏆'],
+      [7,  'VIP 7',  2500000,   2500000,   4.3, 17, '#e879f9', '🚀'],
+      [8,  'VIP 8',  5000000,   5000000,   4.5, 17, '#facc15', '🛡️'],
+      [9,  'VIP 9',  10000000,  10000000,  4.7, 17, '#fb7185', '🌐'],
+      [10, 'VIP 10', 25000000,  25000000,  5.0, 17, '#c8102e', '♾️'],
     ];
     for (const p of eirioPlans) upsert.run(...p);
     db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_withdraw_min', '30') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
@@ -721,32 +725,112 @@ app.post('/api/claim-signal', auth, (req, res) => {
   });
 });
 
-// ---------- API: REFERRALS (pagina Amici) ----------
+// ---------- API: REFERRALS (pagina Amici, squadra a 3 livelli) ----------
+// L1 = tuoi invitati diretti (email visibile: sono i TUOI amici).
+// L2/L3 = la squadra dei tuoi invitati: email mascherata.
+function maskEmail(s) {
+  if (!s) return '—';
+  const p = String(s).split('@');
+  const c = p[0];
+  return (c.length <= 2 ? c.slice(0, 1) + '***' : c.slice(0, 1) + '***' + c.slice(-1)) + '@' + (p[1] || 'quantx.ai');
+}
+
+function depositsSumOf(userId) {
+  return db.prepare('SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE user_id = ? AND confirmed = 1').get(userId).s;
+}
+
 app.get('/api/referrals', auth, (req, res) => {
   const invites = db.prepare('SELECT id, username, email, balance, created_at FROM users WHERE referred_by = ? ORDER BY id').all(req.uid);
   const list = invites.map(inv => {
-    const deposited = db.prepare('SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE user_id = ? AND confirmed = 1').get(inv.id).s;
+    const deposited = depositsSumOf(inv.id);
     const bonus = db.prepare('SELECT COALESCE(referrer_bonus,0) AS b FROM referrals WHERE referrer_id = ? AND referee_id = ?').get(req.uid, inv.id);
+
+    // L2: gli invitati dei tuoi invitati (senza contarti tu)
+    const level2Raw = db.prepare('SELECT id, username, email FROM users WHERE referred_by = ? AND id <> ? ORDER BY id').all(inv.id, req.uid);
+    const level2 = level2Raw.map(l2 => {
+      const l2Deposited = depositsSumOf(l2.id);
+      // L3: il livello sotto i tuoi L2
+      const level3Raw = db.prepare('SELECT id, username, email FROM users WHERE referred_by = ? ORDER BY id').all(l2.id);
+      const level3 = level3Raw.map(l3 => ({
+        name: l3.username || maskEmail(l3.email),
+        email: maskEmail(l3.email),
+        deposited: depositsSumOf(l3.id),
+        active: depositsSumOf(l3.id) > 0,
+      }));
+      return {
+        name: l2.username || maskEmail(l2.email),
+        email: maskEmail(l2.email),
+        deposited: l2Deposited,
+        active: l2Deposited > 0,
+        children: level3,
+      };
+    });
+
     return {
+      id: inv.id,
       name: inv.username,
       email: inv.email,
       balance: inv.balance,
       deposited: deposited,
       active: deposited > 0,      // il bonus si sblocca SOLO se l'amico deposita
       bonus: bonus ? bonus.b : 0,
+      generation2: level2.length,
+      level2,
       since: inv.created_at,
     };
   });
   const earned = db.prepare('SELECT COALESCE(SUM(referrer_bonus),0) AS s FROM referrals WHERE referrer_id = ?').get(req.uid).s;
   const activeCount = list.filter(x => x.active).length;
+  // Riepilogo squadra a 3 livelli (dati reali sui depositi)
+  const team = { l1: { count: invites.length, active: 0, deposits: 0 }, l2: { count: 0, active: 0, deposits: 0 }, l3: { count: 0, active: 0, deposits: 0 } };
+  for (const f of list) {
+    if (f.active) { team.l1.active++; team.l1.deposits += f.deposited || 0; }
+    for (const s2 of (f.level2 || [])) if (s2.active) { team.l2.count++; team.l2.active++; team.l2.deposits += s2.deposited || 0; }
+    for (const s2 of (f.level2 || [])) for (const s3 of (s2.children || [])) if (s3.active) { team.l3.count++; team.l3.active++; team.l3.deposits += s3.deposited || 0; }
+  }
+  for (const key of ['l1', 'l2', 'l3']) team[key].deposits = Math.round(team[key].deposits * 100) / 100;
+  const rates = { l1: PLAN_MODEL_EIRIO.TEAM_BONUS_PCT[1], l2: PLAN_MODEL_EIRIO.TEAM_BONUS_PCT[2], l3: PLAN_MODEL_EIRIO.TEAM_BONUS_PCT[3] };
   res.json({
     code: req.user.referral_code,
     link: '/app.html?ref=' + req.user.referral_code,
     count: invites.length,
     activeCount,
     earned,
+    totalRefDeposits: req.user.total_ref_deposits || 0,
+    team, rates,
     list,
   });
+});
+
+// ---------- API: CLASSIFICA (leaderboard, dati reali; nomi mascherati) ----------
+app.get('/api/leaderboard', (req, res) => {
+  const rows = db.prepare(`
+    SELECT u.id, u.username, u.email,
+      (SELECT COALESCE(SUM(d.amount),0) FROM deposits d WHERE d.user_id = u.id AND d.confirmed = 1) AS deposits,
+      (SELECT COUNT(*) FROM users b WHERE b.referred_by = u.id) AS invited,
+      (SELECT COUNT(*) FROM users b WHERE b.referred_by = u.id AND EXISTS (SELECT 1 FROM deposits dd WHERE dd.user_id = b.id AND dd.confirmed = 1)) AS invitedActive,
+      (SELECT COALESCE(SUM(pl.amount),0) FROM user_plans pl WHERE pl.user_id = u.id AND pl.status = 'active') AS allocated,
+      (SELECT COUNT(*) FROM user_plans pl WHERE pl.user_id = u.id AND pl.status = 'active') AS positions
+    FROM users u
+    ORDER BY invitedActive DESC, deposits DESC, u.id ASC
+    LIMIT 20
+  `).all();
+  const mask = (s) => {
+    if (!s) return 'Membro QuantX';
+    const c = String(s).split('@')[0];
+    return c.length <= 2 ? c + '***' : c.slice(0, 1) + '***' + c.slice(-1);
+  };
+  const board = rows.map((r, i) => ({
+    rank: i + 1,
+    name: mask(r.username || r.email),
+    invited: r.invited,
+    invitedActive: r.invitedActive,
+    deposits: Math.round(r.deposits * 100) / 100,
+    allocated: Math.round(r.allocated * 100) / 100,
+    positions: r.positions,
+    score: r.invitedActive * 10 + Math.round(r.deposits / 100),
+  }));
+  res.json({ teamBonus: PLAN_MODEL_EIRIO.TEAM_BONUS_PCT, board });
 });
 
 // ---------- API: STORICO PRELIEVI ----------
@@ -885,7 +969,7 @@ function checkUpgrades(user) {
   const active = activeMembers(user.id);
   if (active <= 0) return null;
   let target = 1;
-  for (const lvl of [2, 3, 4, 5, 6]) {
+  for (const lvl of [2, 3, 4, 5, 6, 7, 8, 9, 10]) {
     if (active >= PLAN_MODEL_EIRIO.UPGRADE_MEMBERS[lvl]) target = lvl;
   }
   if (target <= (user.plan_id || 1)) return null;
@@ -973,17 +1057,27 @@ app.post('/api/deposit', auth, (req, res) => {
   const newBalance = Math.round((req.user.balance + amt) * 100) / 100;
   db.prepare('UPDATE users SET balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(newBalance, req.uid);
 
-  // Bonus al referrer: SOLO se l'invitato deposita davvero
-  let referrerBonus = 0;
+  // Bonus di squadra su TRES livelli (sez. 3.4): il bonus dello invitato che deposita.
+  // L1 = ref_bonus_pct del piano (17%); L2 = 5% del versamento; L3 = 2% del versamento.
+  let referrerBonus = 0, team2Bonus = 0, team3Bonus = 0;
   if (req.user.referred_by) {
-    const referrer = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.referred_by);
+    const l1 = db.prepare('SELECT id, referred_by FROM users WHERE id = ?').get(req.user.referred_by);
     const bonus = Math.round(amt * (plan.ref_bonus_pct / 100) * 100) / 100;
     referrerBonus = bonus;
     db.prepare('UPDATE users SET balance = balance + ?, total_ref_deposits = total_ref_deposits + ? WHERE id = ?').run(bonus, amt, req.user.referred_by);
     db.prepare('UPDATE referrals SET active = 1, referrer_bonus = referrer_bonus + ? WHERE referrer_id = ? AND referee_id = ?').run(bonus, req.user.referred_by, req.uid);
-    if (referrer && referrer.referred_by) {
-      const grandparentBonus = Math.round(bonus * 0.10 * 100) / 100;
-      db.prepare('UPDATE users SET balance = balance + ? WHERE id = ?').run(grandparentBonus, referrer.referred_by);
+    if (l1 && l1.referred_by) {
+      const pct2 = PLAN_MODEL_EIRIO.TEAM_BONUS_PCT[2] || 0;
+      team2Bonus = Math.round(amt * (pct2 / 100) * 100) / 100;
+      db.prepare('UPDATE users SET balance = balance + ?, total_ref_deposits = total_ref_deposits + ? WHERE id = ?').run(team2Bonus, amt, l1.referred_by);
+      db.prepare('UPDATE referrals SET active = 1, referrer_bonus = referrer_bonus + ? WHERE referrer_id = ? AND referee_id = ?').run(team2Bonus, l1.referred_by, req.uid);
+      const l2 = db.prepare('SELECT id, referred_by FROM users WHERE id = ?').get(l1.referred_by);
+      if (l2 && l2.referred_by) {
+        const pct3 = PLAN_MODEL_EIRIO.TEAM_BONUS_PCT[3] || 0;
+        team3Bonus = Math.round(amt * (pct3 / 100) * 100) / 100;
+        db.prepare('UPDATE users SET balance = balance + ?, total_ref_deposits = total_ref_deposits + ? WHERE id = ?').run(team3Bonus, amt, l2.referred_by);
+        db.prepare('UPDATE referrals SET active = 1, referrer_bonus = referrer_bonus + ? WHERE referrer_id = ? AND referee_id = ?').run(team3Bonus, l2.referred_by, req.uid);
+      }
     }
   }
 
@@ -993,7 +1087,7 @@ app.post('/api/deposit', auth, (req, res) => {
   res.status(201).json({
     message: 'Deposito confermato. Fondi in elaborazione.',
     user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.uid)),
-    deposit: { amount: amt, plan: plan.name, referrerBonus: referrerBonus },
+    deposit: { amount: amt, plan: plan.name, referrerBonus: referrerBonus, teamL2Bonus: team2Bonus, teamL3Bonus: team3Bonus },
     upgraded,
   });
 });
@@ -1071,7 +1165,7 @@ app.get('/api/plans', (req, res) => {
     maxDeposit: p.max_deposit,
     dailyYieldPct: p.daily_yield_pct,
     dailyYieldMin: p.daily_yield_pct,
-    dailyYieldMax: (yieldMax && yieldMax[p.id]) ? yieldMax[p.id] : null,
+    dailyYieldMax: (yieldMax && yieldMax[p.id]) ? Math.round(yieldMax[p.id] * 1000) / 10 : null,
     ordersPerDay: (ordersPerDay && ordersPerDay[p.id]) ? ordersPerDay[p.id] : null,
     upgradeMembers: (upgradeMembers && upgradeMembers[p.id]) ? upgradeMembers[p.id] : null,
     upgradeBonus: (upgradeBonus && upgradeBonus[p.id]) ? upgradeBonus[p.id] : null,
@@ -1402,9 +1496,9 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   if (PLAN_MODEL.model === 'eirio') {
     console.log('QuantX AI server attivo su http://localhost:' + PORT);
-    console.log('   - Modello piani: EIRIO (VIP 1-6), resa 1,5%-4% al giorno');
-    console.log('   - Ordini giornalieri: 4-9 per livello');
-    console.log('   - Bonus referral: 17% (solo se gli invitati depositano)');
+    console.log('   - Modello piani: EIRIO (VIP 1-10), resa 1,5%-5% al giorno');
+    console.log('   - Ordini giornalieri: 4-12 per livello');
+    console.log('   - Squadra a 3 livelli: 17% / 5% / 2% del versamento');
     console.log('   - Prelievi: min 30, massimi 20.000, commissione 2,5% (min 2)');
     console.log('   - Admin key: ' + CONFIG.ADMIN_KEY);
   } else {

@@ -4,18 +4,29 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>QuantX AI — Gestione algoritmica del capitale</title>
+  <link rel="icon" type="image/svg+xml" href="logo.svg" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
     <nav class="nav">
-      <div class="logo" onclick="location.href='index.html'">QUANT<span>X</span> AI</div>
-      <div style="display:flex; gap:8px; flex-wrap:wrap">
-        <a href="plans.html" class="btn btn-ghost" style="text-decoration:none">Piani</a>
-        <a href="amici.html" class="btn btn-ghost" style="text-decoration:none">Affiliazione</a>
-        <a href="nike.html" class="btn btn-ghost" style="text-decoration:none">Vetrina Nike</a>
-        <button class="btn btn-ghost" onclick="location.href='app.html'">Accedi</button>
-        <button class="btn btn-primary" onclick="location.href='app.html?mode=register'">Apri un conto</button>
+      <div class="logo" onclick="location.href='index.html'">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 44" role="img" aria-label="QuantX AI">
+          <path fill="#111111" d="M2 30 C 26 36.5, 62 31.5, 122 3.5 C 100 25, 58 38.5, 24 38 C 15 38, 7 35, 2 30 Z"/>
+          <path fill="none" stroke="#c8102e" stroke-width="6.5" stroke-linecap="round" d="M30 5.5 C 46 20, 64 31, 88 39.5"/>
+        </svg>
+        <span class="logo-word">QUANT<b>X</b>&nbsp;AI</span>
+      </div>
+      <div class="nav-links">
+        <a href="plans.html">Piani</a>
+        <a href="amici.html">Affiliazione</a>
+        <a href="leaderboard.html">Classifica</a>
+        <a href="elite.html">Elite</a>
+        <a href="supporto.html">Supporto</a>
+      </div>
+      <div class="nav-actions">
+        <a href="app.html" class="btn btn-ghost" style="text-decoration:none">Accedi</a>
+        <a href="app.html?mode=register" class="btn btn-primary" style="text-decoration:none">Apri un conto</a>
       </div>
     </nav>
 
@@ -23,12 +34,13 @@
       <div class="badge">Gestione algoritmica del capitale</div>
       <h1>Il tuo capitale,<br /><span class="grad">gestito con metodo.</span></h1>
       <p>
-        QuantX opera con strategie sistematiche sui mercati digitali. Rendimento giornaliero definito
-        per piano, posizioni sempre visibili e prelievi regolati da condizioni contrattuali esplicite.
+        QuantX opera con strategie sistematiche sui mercati digitali. Dieci livelli di piano,
+        rendimento giornaliero definito da contratto, posizioni sempre visibili e prelievi
+        regolati da condizioni esplicite.
       </p>
       <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="location.href='app.html?mode=register'">Apri un conto</button>
-        <button class="btn btn-ghost" onclick="location.href='plans.html'">Vedi i piani</button>
+        <a class="btn btn-primary" style="text-decoration:none" href="app.html?mode=register">Apri un conto</a>
+        <a class="btn btn-ghost" style="text-decoration:none" href="plans.html">Vedi i piani</a>
       </div>
 
       <div class="preview">
@@ -64,11 +76,48 @@
       <span><b id="live-paid">€0</b> liquidati oggi</span>
     </div>
 
+    <!-- TILE grandi stile Nike United -->
+    <div class="tiles">
+      <div class="tile">
+        <img class="tile-photo" src="img/tile-levels.svg" alt="Scarpa creativa QuantX in studio" loading="lazy" />
+        <span class="tile-shade" aria-hidden="true"></span>
+        <span class="tile-tag">La serie VIP 1 — 10</span>
+        <span class="tile-vert">QuantX</span>
+        <div class="tile-inner">
+          <h3>Un livello per ogni capitale.</h3>
+          <p>Da 500 a 25.000.000 USDT: ordini giornalieri da 4 a 12, rendimento da 1,5% a 5% al giorno. Ogni livello ha condizioni scritte.</p>
+          <a class="btn btn-ghost" href="plans.html">Scopri i livelli</a>
+        </div>
+      </div>
+      <div class="tile warm">
+        <img class="tile-photo" src="img/tile-team.svg" alt="Atleti QuantX sulla pista" loading="lazy" />
+        <span class="tile-shade" aria-hidden="true"></span>
+        <span class="tile-tag">Il tuo giro, il tuo giro d'affari</span>
+        <span class="tile-vert">Affiliazione</span>
+        <div class="tile-inner">
+          <h3>La squadra su tre livelli.</h3>
+          <p>17% sui versamenti diretti, 5% sul secondo livello, 2% sul terzo. Le commissioni si sbloccano solo quando l'invitato versa davvero.</p>
+          <a class="btn btn-ghost" href="amici.html">Programma di affiliazione</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- BANDA AD HERO: poster originale QuantX -->
+    <div class="adband" style="background-image:url('img/hero-run.svg')">
+      <div class="adband-inner">
+        <div class="adband-kicker" style="font-size:12px; letter-spacing:0.22em; text-transform:uppercase; font-weight:700; opacity:0.85; margin-bottom:14px">QuantX AI · Asset Management digitale</div>
+        <h2>Muovi il capitale.</h2>
+        <p>Dieci livelli, da 500 a 25.000.000 USDT. Rendimento contrattuale ogni giorno, squadra su tre livelli, tutto scritto nero su bianco.</p>
+        <a class="btn btn-primary" href="plans.html">Scegli il tuo livello</a>
+        <a class="btn btn-ghost" href="app.html?mode=register" style="margin-left:10px">Apri un conto</a>
+      </div>
+    </div>
+
     <div class="stats-grid">
-      <div class="card stat-card"><div class="num" id="stat-profit">€0</div><div class="label">Capitale allocato</div></div>
-      <div class="card stat-card"><div class="num" id="stat-users">0</div><div class="label">Clienti</div></div>
-      <div class="card stat-card"><div class="num" id="stat-winrate">0%</div><div class="label">Ordini in profitto</div></div>
-      <div class="card stat-card"><div class="num" id="stat-capital">€0</div><div class="label">Saldo clienti</div></div>
+      <div class="stat-card"><div class="num" id="stat-profit">€0</div><div class="label">Capitale allocato</div></div>
+      <div class="stat-card"><div class="num" id="stat-users">0</div><div class="label">Clienti</div></div>
+      <div class="stat-card"><div class="num" id="stat-winrate">0%</div><div class="label">Ordini in profitto</div></div>
+      <div class="stat-card"><div class="num" id="stat-capital">€0</div><div class="label">Saldo clienti</div></div>
     </div>
 
     <div class="card" style="margin-top:24px">
@@ -79,111 +128,162 @@
       <div class="ticker" id="ticker"></div>
     </div>
 
-    <h2 class="section-title">Come operiamo</h2>
-    <p class="section-sub">Un processo definito, senza discrezionalità.</p>
-    <div class="features">
-      <div class="card feature">
-        <div class="icon">01 — Esecuzione</div>
-        <h3>Ordini sistematici</h3>
-        <p>Gli ordini vengono generati dal modello e distribuiti nell'arco della giornata secondo il livello del piano. Nessun intervento manuale sul singolo trade.</p>
-      </div>
-      <div class="card feature">
-        <div class="icon">02 — Rendimento</div>
-        <h3>Maturazione continua</h3>
-        <p>Il rendimento del piano matura in continuazione sulle posizioni attive e viene accreditato sul saldo. Senza posizioni attive non matura alcun rendimento.</p>
-      </div>
-      <div class="card feature">
-        <div class="icon">03 — Trasparenza</div>
-        <h3>Posizioni e movimenti</h3>
-        <p>Ogni posizione è registrata separatamente, con importo, data di attivazione e rendimento. Lo storico dei movimenti è consultabile in qualsiasi momento.</p>
-      </div>
-      <div class="card feature">
-        <div class="icon">04 — Affiliazione</div>
-        <h3>Programma referral</h3>
-        <p>Commissioni di rete su tre livelli: 17% diretto, 5% secondo livello, 1% terzo livello. Riconosciute solo sui versamenti effettivamente confermati.</p>
+    <!-- BANDA GRIGIA: come operiamo -->
+    <div class="band">
+      <div class="inner">
+        <h2 class="section-title" style="margin-top:0">Come operiamo</h2>
+        <p class="section-sub">Un processo definito, senza discrezionalità.</p>
+        <div class="features">
+          <div class="feature">
+            <div class="icon">01 — Esecuzione</div>
+            <h3>Ordini sistematici</h3>
+            <p>Gli ordini vengono generati dal modello e distribuiti nell'arco della giornata secondo il livello del piano. Nessun intervento manuale sul singolo trade.</p>
+          </div>
+          <div class="feature">
+            <div class="icon">02 — Rendimento</div>
+            <h3>Maturazione continua</h3>
+            <p>Il rendimento del piano matura in continuazione sulle posizioni attive e viene accreditato sul saldo. Senza posizioni attive non matura alcun rendimento.</p>
+          </div>
+          <div class="feature">
+            <div class="icon">03 — Trasparenza</div>
+            <h3>Posizioni e movimenti</h3>
+            <p>Ogni posizione è registrata separatamente, con importo, data di attivazione e rendimento. Lo storico dei movimenti è consultabile in qualsiasi momento.</p>
+          </div>
+          <div class="feature">
+            <div class="icon">04 — Affiliazione</div>
+            <h3>Programma referral</h3>
+            <p>Commissioni di rete su tre livelli: 17% diretto, 5% secondo livello, 2% terzo livello. Riconosciute solo sui versamenti effettivamente confermati.</p>
+          </div>
+        </div>
       </div>
     </div>
 
     <h2 class="section-title">Piani e condizioni</h2>
-    <p class="section-sub">Importo, rendimento giornaliero e numero di ordini sono fissati per ciascun livello.</p>
-    <div class="plans-grid">
-      <div class="card plan-card">
-        <div class="plan-name">VIP 1</div>
-        <div class="plan-price">500 <span>USDT</span></div>
-        <div class="plan-yield">1,5% <small>al giorno</small></div>
-        <ul class="plan-features">
-          <li>4 ordini giornalieri</li>
-          <li>Prelievo minimo 30 USDT</li>
-          <li>Commissione prelievo 2,5%</li>
-        </ul>
-        <a class="btn btn-ghost btn-block" style="text-decoration:none; text-align:center" href="plans.html">Dettagli</a>
-      </div>
-      <div class="card plan-card featured">
-        <div class="plan-badge">Consigliato</div>
-        <div class="plan-name">VIP 2</div>
-        <div class="plan-price">3.000 <span>USDT</span></div>
-        <div class="plan-yield">2,0% <small>al giorno</small></div>
-        <ul class="plan-features">
-          <li>5 ordini giornalieri</li>
-          <li>Upgrade con 5 membri attivi</li>
-          <li>Prelievi prioritari</li>
-        </ul>
-        <a class="btn btn-primary btn-block" style="text-decoration:none; text-align:center" href="plans.html">Dettagli</a>
-      </div>
-      <div class="card plan-card">
-        <div class="plan-name">VIP 4</div>
-        <div class="plan-price">30.000 <span>USDT</span></div>
-        <div class="plan-yield">3,0% <small>al giorno</small></div>
-        <ul class="plan-features">
-          <li>7 ordini giornalieri</li>
-          <li>Upgrade con 15 membri attivi</li>
-          <li>Account manager dedicato</li>
-        </ul>
-        <a class="btn btn-ghost btn-block" style="text-decoration:none; text-align:center" href="plans.html">Dettagli</a>
-      </div>
+    <p class="section-sub">Importo, rendimento giornaliero e numero di ordini sono fissati per ciascun livello. I livelli in evidenza:</p>
+    <div class="plans-grid" id="home-plans">
+      <div class="card plan-card" style="grid-column:1/-1; color:var(--muted)">Caricamento piani…</div>
     </div>
-
     <div style="text-align:center; margin-top:24px">
-      <a class="btn btn-ghost" style="text-decoration:none" href="plans.html">Confronta tutti i piani (VIP 1 – VIP 6)</a>
+      <a class="btn btn-ghost" style="text-decoration:none" href="plans.html">Confronta tutti i piani (VIP 1 – VIP 10)</a>
     </div>
 
-    <h2 class="section-title">Apertura del conto</h2>
-    <p class="section-sub">Tre passaggi, nessuna procedura telefonica.</p>
-    <div class="features">
-      <div class="card feature">
-        <div class="icon">Passaggio 1</div>
-        <h3>Registrazione</h3>
-        <p>Email e password. Il codice invito collega il conto alla rete di affiliazione, se presente.</p>
-      </div>
-      <div class="card feature">
-        <div class="icon">Passaggio 2</div>
-        <h3>Versamento</h3>
-        <p>Carta o USDT su BNB Smart Chain. L'accredito con carta è immediato; i versamenti crypto sono verificati.</p>
-      </div>
-      <div class="card feature">
-        <div class="icon">Passaggio 3</div>
-        <h3>Attivazione del piano</h3>
-        <p>Il capitale viene allocato sul livello scelto. La posizione parte dalla data di attivazione e matura ogni giorno.</p>
+    <!-- BANDA: apertura conto -->
+    <div class="band" style="margin-top:48px">
+      <div class="inner">
+        <h2 class="section-title" style="margin-top:0">Apertura del conto</h2>
+        <p class="section-sub">Tre passaggi, nessuna procedura telefonica.</p>
+        <div class="features">
+          <div class="feature">
+            <div class="icon">Passaggio 1</div>
+            <h3>Registrazione</h3>
+            <p>Email e password. Il codice invito collega il conto alla rete di affiliazione, se presente.</p>
+          </div>
+          <div class="feature">
+            <div class="icon">Passaggio 2</div>
+            <h3>Versamento</h3>
+            <p>Carta o USDT su BNB Smart Chain. L'accredito con carta è immediato; i versamenti crypto sono verificati.</p>
+          </div>
+          <div class="feature">
+            <div class="icon">Passaggio 3</div>
+            <h3>Attivazione del piano</h3>
+            <p>Il capitale viene allocato sul livello scelto. La posizione parte dalla data di attivazione e matura ogni giorno.</p>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="card referral-cta" style="margin:40px 0">
-      <h2 style="font-size:22px; font-weight:600; margin-bottom:8px">Programma di affiliazione</h2>
-      <p style="color:var(--muted); max-width:680px; margin:0 0 20px; line-height:1.7">
-        Le commissioni di rete sono riconosciute sui versamenti confermati degli utenti collegati:
-        17% di primo livello, 5% di secondo, 1% di terzo. Nessun compenso è dovuto in assenza di versamenti.
-      </p>
-      <button class="btn btn-primary" onclick="location.href='app.html?mode=register'">Richiedi il codice invito</button>
+    <h2 class="section-title">Classifica in tempo reale</h2>
+    <p class="section-sub">Chi costruisce la squadra più forte sale. Nomi mascherati, dati reali: <a href="leaderboard.html" style="color:var(--text); text-decoration:underline">classifica completa</a>.</p>
+    <table class="ladder" id="home-ladder">
+      <thead><tr><th>#</th><th>Membro</th><th>Invitati attivi</th><th>Versamenti della rete</th></tr></thead>
+      <tbody><tr><td colspan="4" style="color:var(--muted)">Caricamento…</td></tr></tbody>
+    </table>
+
+    <div class="card referral-cta" style="margin:40px 0; display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap">
+      <div>
+        <h2 style="font-size:26px; font-weight:800; letter-spacing:-0.03em; margin-bottom:8px">Il programma di affiliazione</h2>
+        <p style="color:var(--muted); max-width:680px; margin:0 0 20px; line-height:1.7">
+          Le commissioni di rete sono riconosciute sui versamenti confermati degli utenti collegati:
+          17% di primo livello, 5% di secondo, 2% di terzo. Nessun compenso è dovuto in assenza di versamenti.
+        </p>
+        <a class="btn btn-primary" style="text-decoration:none" href="app.html?mode=register">Richiedi il codice invito</a>
+      </div>
     </div>
 
     <div class="footer">
-      <div><b style="color:var(--text)">QuantX AI</b> — Gestione algoritmica del capitale digitale.</div>
-      <div>I rendimenti indicati sono contrattuali e non costituiscono garanzia di risultato. Il capitale investito è soggetto a rischio.</div>
-      <div style="margin-top:8px">
-        <a href="plans.html">Piani</a> · <a href="amici.html">Affiliazione</a> · <a href="app.html">Area riservata</a>
+      <div class="foot-grid">
+        <div>
+          <b style="color:var(--text)">QuantX AI</b> — Gestione algoritmica del capitale digitale.
+          <div style="margin-top:10px; color:var(--muted-2); font-size:13px">Livelli VIP 1–10 · squadre su 3 livelli · prelievi regolati da contratto.</div>
+        </div>
+        <div>
+          <b style="display:block; color:var(--text); margin-bottom:8px">Piattaforma</b>
+          <a href="plans.html" style="display:block">Piani</a>
+          <a href="leaderboard.html" style="display:block">Classifica</a>
+          <a href="elite.html" style="display:block">Elite</a>
+        </div>
+        <div>
+          <b style="display:block; color:var(--text); margin-bottom:8px">Servizi</b>
+          <a href="amici.html" style="display:block">Affiliazione</a>
+          <a href="supporto.html" style="display:block">Supporto</a>
+          <a href="app.html" style="display:block">Area riservata</a>
+        </div>
       </div>
+      <div class="fine">I rendimenti indicati sono contrattuali e non costituiscono garanzia di risultato. Il capitale investito è soggetto a rischio.</div>
     </div>
   </div>
+
+  <script>
+    // Piani in evidenza: render dinamico dall'API (nessun dato duplicato nel frontend)
+    (async () => {
+      const fmtEur = (v) => '€' + itNum(v, 0);
+      const itNum = (n, d = 0) => {
+        const fixed = Number(n || 0).toFixed(d);
+        const parts = fixed.split('.');
+        return parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (parts[1] ? ',' + parts[1] : '');
+      };
+      try {
+        const res = await fetch('/api/plans');
+        const plans = await res.json();
+        const box = document.getElementById('home-plans');
+        const pick = plans.slice(0, 6);
+        box.innerHTML = pick.map((p, i) => `
+          <div class="plan-card${p.id === 2 ? ' featured' : ''}${p.id === 6 ? '' : ''}">
+            ${p.id === 2 ? '<div class="plan-badge">Consigliato</div>' : ''}
+            <div class="plan-name">${p.name}</div>
+            <div class="plan-price">${itNum(p.minDeposit)} <span>USDT</span></div>
+            <div class="plan-yield">${String(p.dailyYieldPct).replace('.', ',')}% <small>al giorno</small></div>
+            <ul class="plan-features">
+              <li>${p.ordersPerDay} ordini giornalieri</li>
+              <li>Resa giornaliera fino al ${String(p.dailyYieldMax).replace('.', ',')}%</li>
+              <li>${p.upgradeMembers ? ('Upgrade con ' + p.upgradeMembers + ' membri attivi · bonus ' + itNum(p.upgradeBonus)) : 'Punto di ingresso'}</li>
+              <li>Prelievo minimo 30 USDT · commissione 2,5%</li>
+            </ul>
+            <a class="btn ${p.id === 2 ? 'btn-primary' : 'btn-ghost'} btn-block" style="text-decoration:none; text-align:center" href="plans.html">Dettagli</a>
+          </div>`).join('');
+      } catch (e) {
+        document.getElementById('home-plans').innerHTML = '<div class="plan-card" style="grid-column:1/-1">Piani temporaneamente non disponibili.</div>';
+      }
+
+      // Anteprima classifica: top 5
+      try {
+        const r = await fetch('/api/leaderboard');
+        const d = await r.json();
+        const rows = (d.board || []).slice(0, 5);
+        const tb = document.querySelector('#home-ladder tbody');
+        if (rows.length) {
+          tb.innerHTML = rows.map(x => `
+            <tr${x.rank === 1 ? ' class="medal-1"' : x.rank === 2 ? ' class="medal-2"' : x.rank === 3 ? ' class="medal-3"' : ''}>
+              <td class="rank">${x.rank}</td><td>${x.name}</td>
+              <td class="num">${x.invitedActive}</td>
+              <td class="num">${itNum(x.deposits, 0)} USDT</td>
+            </tr>`).join('');
+        } else {
+          tb.innerHTML = '<tr><td colspan="4" style="color:var(--muted)">La classifica parte con i primi membri. Registrati e costruisci la squadra.</td></tr>';
+        }
+      } catch (e) { /* classifica offline: rimane il placeholder */ }
+    })();
+  </script>
   <script src="live.js"></script>
   <script src="landing.js"></script>
 </body>

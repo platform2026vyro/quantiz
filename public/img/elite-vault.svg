@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1100" preserveAspectRatio="xMidYMid slice">
+  <!-- Poster "Vault": porta blindata con fessura di luce rossa -->
+  <defs>
+    <radialGradient id="vBg" cx="0.42" cy="0.4" r="0.9">
+      <stop offset="0" stop-color="#1c1c1f"/>
+      <stop offset="0.6" stop-color="#101012"/>
+      <stop offset="1" stop-color="#060607"/>
+    </radialGradient>
+    <linearGradient id="door" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#232327"/>
+      <stop offset="0.5" stop-color="#161619"/>
+      <stop offset="1" stop-color="#0c0c0e"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <rect width="900" height="1100" fill="url(#vBg)"/>
+  <!-- parete bullonata -->
+  <g fill="#141416">
+    <circle cx="90" cy="110" r="10"/><circle cx="810" cy="110" r="10"/>
+    <circle cx="90" cy="990" r="10"/><circle cx="810" cy="990" r="10"/>
+    <circle cx="60" cy="550" r="8"/><circle cx="840" cy="550" r="8"/>
+  </g>
+
+  <!-- luce dalla fessura -->
+  <rect x="256" y="136" width="10" height="840" fill="#c8102e" filter="url(#glow)" opacity="0.9"/>
+
+  <!-- porta -->
+  <rect x="300" y="120" width="420" height="860" rx="18" fill="url(#door)" stroke="#000" stroke-opacity="0.6" stroke-width="3"/>
+  <rect x="326" y="146" width="368" height="808" rx="10" fill="none" stroke="#ffffff" stroke-opacity="0.07" stroke-width="2"/>
+
+  <!-- raggiera: mozzo + leve -->
+  <g transform="translate(510,545)">
+    <circle r="34" fill="#0a0a0c" stroke="#3a3a40" stroke-width="4"/>
+    <circle r="12" fill="#c8102e"/>
+    <g stroke="#3a3a40" stroke-width="14" stroke-linecap="round">
+      <path d="M0 -40 L 0 -128"/><path d="M0 40 L 0 128"/>
+      <path d="M-40 0 L -128 0"/><path d="M40 0 L 128 0"/>
+      <path d="M-28 -28 L -90 -90"/><path d="M28 28 L 90 90"/>
+      <path d="M-28 28 L -90 90"/><path d="M28 -28 L 90 -90"/>
+    </g>
+  </g>
+
+  <!-- riflessi intelaiatura -->
+  <path d="M300 120 L 720 120 L 714 172 L 306 172 Z" fill="#ffffff" opacity="0.04"/>
+  <rect x="256" y="136" width="6" height="840" fill="#ff4560" opacity="0.85"/>
+</svg>

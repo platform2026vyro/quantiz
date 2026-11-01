@@ -283,7 +283,7 @@ function addAdminLink() {
 
 // ---------- ORDINI DEL GIORNO ----------
 // Il numero di ordini dipende dal livello del piano ed è distribuito sulle 24 ore.
-const EIRIO_ORDERS = { 1: 4, 2: 5, 3: 6, 4: 7, 5: 8, 6: 9 };
+const EIRIO_ORDERS = { 1: 4, 2: 5, 3: 6, 4: 7, 5: 8, 6: 9, 7: 10, 8: 10, 9: 11, 10: 12 };
 
 async function renderSignals(data) {
   const sig = data.signals || { claimed: [], profits: [] };

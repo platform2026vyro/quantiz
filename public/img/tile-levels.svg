@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1100" preserveAspectRatio="xMidYMid slice">
+  <!-- Poster "Sneaker": scarpa astratta QuantX su studio chiaro -->
+  <defs>
+    <linearGradient id="bgS" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f4f5"/>
+      <stop offset="0.62" stop-color="#e8e8ea"/>
+      <stop offset="1" stop-color="#d9d9dc"/>
+    </linearGradient>
+    <linearGradient id="upper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b1b1e"/>
+      <stop offset="1" stop-color="#2e2e33"/>
+    </linearGradient>
+    <linearGradient id="sole" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c8102e"/>
+      <stop offset="0.75" stop-color="#8e0c20"/>
+      <stop offset="1" stop-color="#5f0815"/>
+    </linearGradient>
+    <radialGradient id="shadow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#000" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="900" height="1100" fill="url(#bgS)"/>
+  <!-- cerchio di allestimento -->
+  <circle cx="450" cy="470" r="330" fill="none" stroke="#111" stroke-opacity="0.08" stroke-width="2"/>
+  <circle cx="450" cy="470" r="250" fill="none" stroke="#111" stroke-opacity="0.06" stroke-width="2"/>
+
+  <!-- ombra a terra -->
+  <ellipse cx="452" cy="798" rx="300" ry="58" fill="url(#shadow)"/>
+
+  <!-- scarpa -->
+  <g transform="translate(170,470) rotate(-8) scale(0.74)">
+    <!-- suola -->
+    <path d="M30 380 C 90 440, 210 470, 350 452 C 470 438, 560 400, 640 330 L 660 372 C 590 452, 470 500, 340 508 C 200 516, 80 470, 18 410 Z"
+          fill="url(#sole)"/>
+    <rect x="18" y="398" width="650" height="16" rx="8" fill="#111111" transform="rotate(2 18 398)" opacity="0.85"/>
+    <!-- upper -->
+    <path d="M30 380 C 60 300, 120 220, 210 170 C 300 120, 420 108, 500 150 C 560 182, 610 240, 640 330 C 560 400, 470 438, 350 452 C 210 470, 90 440, 30 380 Z"
+          fill="url(#upper)"/>
+    <!-- maglia: linee trama -->
+    <g stroke="#ffffff" stroke-opacity="0.14" stroke-width="3">
+      <path d="M90 360 C 160 250, 260 190, 380 170"/>
+      <path d="M140 390 C 210 280, 310 216, 430 196"/>
+      <path d="M200 414 C 266 316, 360 252, 480 230"/>
+      <path d="M270 428 C 330 350, 410 296, 500 274"/>
+    </g>
+    <!-- lacci -->
+    <g stroke="#ffffff" stroke-opacity="0.85" stroke-width="10" stroke-linecap="round">
+      <path d="M320 190 L 380 224"/>
+      <path d="M300 238 L 366 268"/>
+      <path d="M284 288 L 352 312"/>
+    </g>
+    <!-- swoorsh QuantX: curva interna -->
+    <path d="M310 300 C 380 330, 470 320, 560 250 C 510 330, 420 356, 348 340 C 324 334, 312 318, 310 300 Z"
+          fill="#c8102e"/>
+    <!-- tallone plastico -->
+    <path d="M30 380 C 40 320, 70 268, 118 228 C 96 292, 84 344, 92 400 Z" fill="#0d0d0f"/>
+  </g>
+</svg>
