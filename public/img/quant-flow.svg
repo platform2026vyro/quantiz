@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bgF" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#04070c"/>
+      <stop offset="1" stop-color="#0a0f1e"/>
+    </linearGradient>
+    <linearGradient id="n1" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#34f5c5"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bgF)"/>
+  <g stroke="#34f5c5" stroke-opacity="0.05">
+    <path d="M0 180 H1600 M0 330 H1600 M0 480 H1600 M0 630 H1600"/>
+    <path d="M200 0 V900 M420 0 V900 M640 0 V900 M860 0 V900 M1080 0 V900 M1300 0 V900"/>
+  </g>
+  <g font-family="monospace" text-anchor="middle">
+    <g>
+      <rect x="60" y="250" width="300" height="180" rx="18" fill="#0a1118" stroke="#1c2a33"/>
+      <text x="210" y="330" font-size="44" font-weight="bold" fill="#eafff8">👛</text>
+      <text x="210" y="390" font-size="20" fill="#7d9a92">WALLET</text>
+      <text x="210" y="428" font-size="18" fill="#34f5c5">collegamento</text>
+    </g>
+    <g>
+      <rect x="460" y="250" width="300" height="180" rx="18" fill="#0a1118" stroke="#1c2a33"/>
+      <text x="610" y="330" font-size="44" font-weight="bold" fill="#eafff8">💎</text>
+      <text x="610" y="390" font-size="20" fill="#7d9a92">DEPOSITO</text>
+      <text x="610" y="428" font-size="18" fill="#34f5c5">USDT · gateway</text>
+    </g>
+    <g>
+      <rect x="860" y="250" width="300" height="180" rx="18" fill="#0a1118" stroke="#1c2a33"/>
+      <text x="1010" y="330" font-size="44" font-weight="bold" fill="#eafff8">📊</text>
+      <text x="1010" y="390" font-size="20" fill="#7d9a92">QUANTIZZAZIONE</text>
+      <text x="1010" y="428" font-size="18" fill="#34f5c5">modelli · rischio</text>
+    </g>
+    <g>
+      <rect x="1260" y="250" width="300" height="180" rx="18" fill="#0a1118" stroke="#1c2a33"/>
+      <text x="1410" y="330" font-size="44" font-weight="bold" fill="#eafff8">⚡</text>
+      <text x="1410" y="390" font-size="20" fill="#7d9a92">ORDINI</text>
+      <text x="1410" y="428" font-size="18" fill="#34f5c5">esecuzione live</text>
+    </g>
+    <g>
+      <rect x="460" y="490" width="300" height="180" rx="18" fill="#0a1118" stroke="#1c2a33"/>
+      <text x="610" y="570" font-size="44" font-weight="bold" fill="#eafff8">🏦</text>
+      <text x="610" y="630" font-size="20" fill="#7d9a92">PRELIEVO</text>
+      <text x="610" y="668" font-size="18" fill="#34f5c5">usato dagli ordini</text>
+    </g>
+    <!-- connessioni -->
+    <path d="M360 340 H 430 340 H 430 350 H 460 350" stroke="#34f5c5" stroke-width="6" fill="none"/>
+    <path d="M760 340 H 830 340 H 830 350 H 860 350" stroke="#34f5c5" stroke-width="6" fill="none"/>
+    <path d="M1160 340 H 1230 340 H 1230 350 H 1260 350" stroke="#34f5c5" stroke-width="6" fill="none"/>
+    <path d="M610 430 H 610 490" stroke="#34f5c5" stroke-width="6" fill="none"/>
+    <path d="M1010 430 H 1010 490" stroke="#34f5c5" stroke-width="6" fill="none"/>
+  </g>
+</svg>

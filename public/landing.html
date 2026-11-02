@@ -29,7 +29,12 @@
   .land-nav-cta { font-size: 12px; letter-spacing: .22em; text-transform: uppercase; color: #04120d; background: linear-gradient(90deg, #34f5c5, #22d3ee); padding: 13px 26px; border-radius: 999px; font-weight: 800; text-decoration: none; box-shadow: 0 0 34px rgba(52,245,197,.45); transition: transform .25s, box-shadow .25s; }
   .land-nav-cta:hover { transform: translateY(-2px); box-shadow: 0 0 54px rgba(52,245,197,.7); }
 
-  .land-hero { text-align:center; padding: clamp(70px, 12vh, 150px) 20px 60px; }
+  .land-hero { position: relative; text-align:center; padding: clamp(70px, 12vh, 150px) 20px 60px; overflow: hidden; }
+  .land-hero-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: blur(34px) brightness(0.55) saturate(1.1); transform: scale(1.07); z-index: 0; }
+  .land-hero::after { content:''; position:absolute; inset:0; background: linear-gradient(180deg, rgba(4,6,12,0.95) 0%, rgba(4,6,12,0.62) 45%, rgba(4,6,12,0.97) 100%); z-index: 1; pointer-events: none; }
+  .land-hero > *:not(.land-hero-photo) { position: relative; z-index: 2; }
+  .land-shot { border-radius: 22px; overflow: hidden; border: 1px solid rgba(52,245,197,.22); box-shadow: 0 24px 70px rgba(0,0,0,.55); background: #060b11; }
+  .land-shot img { width: 100%; display: block; }
   .land-badge { display:inline-flex; align-items:center; gap:10px; border:1px solid rgba(52,245,197,.4); background: rgba(52,245,197,.08); color:#7dffd9; padding: 9px 20px; border-radius: 999px; font-size: 12px; letter-spacing:.28em; text-transform: uppercase; backdrop-filter: blur(8px); }
   .land-badge .dot { width:8px; height:8px; border-radius:50%; background:#34f5c5; box-shadow:0 0 14px #34f5c5; animation: landPulse 1.8s infinite; }
   @keyframes landPulse { 0%,100% { opacity:1; } 50% { opacity:.25; } }
@@ -129,6 +134,7 @@
   <nav class="land-nav-links">
     <a href="#strategia">Strategia</a>
     <a href="#live">Live</a>
+    <a href="#flussi">Flussi</a>
     <a href="#depositi">Depositi</a>
     <a href="#prenota">Prenota</a>
   </nav>
@@ -138,6 +144,7 @@
 <main class="land-wrap">
   <!-- HERO -->
   <section class="land-hero" id="top">
+    <img class="land-hero-photo" src="img/quant-platform.svg" alt="Dashboard QuantX AI — quantizzazione del capitale in diretta">
     <div class="land-badge"><span class="dot"></span> Live — 5.000 posti disponibili</div>
     <h1 class="land-h1">La quantizzazione<br><span class="thin">DEL CAPITALE</span></h1>
     <p class="land-sub">Strategia quantitativa autonoma, depositi in wallet, piani VIP e segnali in tempo reale. Il capitale viene quantizzato, misurato, scalato.</p>
@@ -206,6 +213,17 @@
         <div class="land-slot"><span class="tm">21:00</span><span class="ds">Sera — chiusura giornaliera</span></div>
         <p style="color:#8ba79d;font-size:13.5px;line-height:1.7;margin:8px 0 0;">Ogni giorno la strategia viene "quantizzata": i dati entrano, il rischio viene misurato e l'esecuzione avviene nei finestre orarie dedicate.</p>
       </div>
+    </div>
+  </section>
+
+  <!-- DEMO FLUSSI -->
+  <section class="land-section" id="flussi">
+    <div class="land-overline">Demo · Flussi</div>
+    <h2 class="land-title">Come funziona la <em>quantizzazione</em></h2>
+    <p class="land-lead">Una foto reale della piattaforma in azione: la dashboard quantitativa, il flusso di deposito, la strategia e l'esecuzione. Il capitale entra, viene misurato, quantizzato.</p>
+    <div class="land-show" style="grid-template-columns: 1fr 1fr;">
+      <div class="land-shot"><img src="img/quant-platform.svg" alt="Dashboard QuantX AI — quantizzazione del capitale"></div>
+      <div class="land-shot"><img src="img/quant-flow.svg" alt="Flusso QuantX AI — wallet, deposito, quantizzazione, ordini, prelievo"></div>
     </div>
   </section>
 

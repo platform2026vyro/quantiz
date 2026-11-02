@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bgQ" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#04070c"/>
+      <stop offset="0.55" stop-color="#071019"/>
+      <stop offset="1" stop-color="#0a0f1e"/>
+    </linearGradient>
+    <linearGradient id="lineQ" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#34f5c5"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="fillQ" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34f5c5" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#34f5c5" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bgQ)"/>
+  <g stroke="#34f5c5" stroke-opacity="0.05">
+    <path d="M0 180 H1600 M0 330 H1600 M0 480 H1600 M0 630 H1600"/>
+    <path d="M200 0 V900 M420 0 V900 M640 0 V900 M860 0 V900 M1080 0 V900 M1300 0 V900"/>
+  </g>
+  <!-- barra superior -->
+  <rect x="0" y="0" width="1600" height="64" fill="#05080d"/>
+  <rect x="40" y="20" width="220" height="24" rx="12" fill="#34f5c5"/>
+  <rect x="290" y="20" width="150" height="24" rx="12" fill="#22d3ee" opacity="0.7"/>
+  <rect x="460" y="20" width="90" height="24" rx="12" fill="#a78bfa" opacity="0.7"/>
+  <!-- KPI -->
+  <g>
+    <rect x="60" y="110" width="360" height="130" rx="16" fill="#0a1118" stroke="#123"/>
+    <text x="84" y="152" font-family="monospace" font-size="15" fill="#7d9a92">CAPITALE ALLOCATO</text>
+    <text x="84" y="196" font-family="monospace" font-size="34" font-weight="bold" fill="#eafff8">€ 2.450.000</text>
+  </g>
+  <g>
+    <rect x="460" y="110" width="360" height="130" rx="16" fill="#0a1118" stroke="#123"/>
+    <text x="484" y="152" font-family="monospace" font-size="15" fill="#7d9a92">CLIENTI</text>
+    <text x="484" y="196" font-family="monospace" font-size="34" font-weight="bold" fill="#eafff8">1.284</text>
+  </g>
+  <g>
+    <rect x="860" y="110" width="360" height="130" rx="16" fill="#0a1118" stroke="#123"/>
+    <text x="884" y="152" font-family="monospace" font-size="15" fill="#7d9a92">ORDINI IN PROFITTO</text>
+    <text x="884" y="196" font-family="monospace" font-size="34" font-weight="bold" fill="#34f5c5">87.6%</text>
+  </g>
+  <g>
+    <rect x="1260" y="110" width="300" height="130" rx="16" fill="#0a1118" stroke="#123"/>
+    <text x="1284" y="152" font-family="monospace" font-size="13" fill="#7d9a92">WINRATE</text>
+    <text x="1284" y="196" font-family="monospace" font-size="34" font-weight="bold" fill="#a78bfa">4.9%</text>
+  </g>
+  <!-- grafico -->
+  <rect x="60" y="280" width="1180" height="420" rx="18" fill="#060b11" stroke="#143"/>
+  <path d="M60 660 C 200 640, 320 600, 460 615 S 760 540, 900 555 S 1160 480, 1180 500 L 1260 470 L 1340 430 L 1420 400 L 1480 360 L 1540 330 L 1560 300 L 1560 660 Z" fill="url(#fillQ)"/>
+  <path d="M60 660 C 200 640, 320 600, 460 615 S 760 540, 900 555 S 1160 480, 1180 500 L 1260 470 L 1340 430 L 1420 400 L 1480 360 L 1540 330 L 1560 300 L 1560 660 Z" fill="none" stroke="url(#lineQ)" stroke-width="5"/>
+  <circle cx="1560" cy="300" r="14" fill="#34f5c5"/>
+  <circle cx="1560" cy="300" r="26" fill="#34f5c5" opacity="0.25"/>
+  <!-- candele -->
+  <g>
+    <rect x="90" y="560" width="22" height="90" rx="4" fill="#34f5c5"/>
+    <rect x="140" y="590" width="22" height="60" rx="4" fill="#34f5c5"/>
+    <rect x="190" y="570" width="22" height="80" rx="4" fill="#34f5c5"/>
+    <rect x="240" y="610" width="22" height="40" rx="4" fill="#f43f5e"/>
+    <rect x="290" y="585" width="22" height="65" rx="4" fill="#34f5c5"/>
+    <rect x="340" y="545" width="22" height="105" rx="4" fill="#34f5c5"/>
+    <rect x="390" y="575" width="22" height="75" rx="4" fill="#34f5c5"/>
+  </g>
+  <!-- pannelli laterali -->
+  <g>
+    <rect x="60" y=720 width="560" height="140" rx="16" fill="#0a1118" stroke="#143"/>
+    <text x="84" y="770" font-family="monospace" font-size="14" fill="#7d9a92">POSIZIONE · VIP 5</text>
+    <text x="84" y="806" font-family="monospace" font-size="26" font-weight="bold" fill="#eafff8">12.400 USDT</text>
+  </g>
+  <g>
+    <rect x="660" y="720" width="560" height="140" rx="16" fill="#0a1118" stroke="#143"/>
+    <text x="684" y="770" font-family="monospace" font-size="14" fill="#7d9a92">RISERVA</text>
+    <text x="684" y="806" font-family="monospace" font-size="26" font-weight="bold" fill="#34f5c5">+6.2% /giorno</text>
+  </g>
+  <g>
+    <rect x="1260" y="720" width="280" height="140" rx="16" fill="#0a1118" stroke="#143"/>
+    <text x="1284" y="770" font-family="monospace" font-size="13" fill="#7d9a92">STATO</text>
+    <text x="1284" y="806" font-family="monospace" font-size="22" font-weight="bold" fill="#34f5c5">LIVE</text>
+  </g>
+</svg>
