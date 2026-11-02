@@ -1,5 +1,5 @@
 /* ============================================================
-   QuantX AI — Design system "Nike.com"
+   QuantX AI - Design system
    Bianco pieno, tipografia Helvetica pesante, card prodotto,
    bottoni pill, bande grigie alternate. Zero effetti gioco.
    ============================================================ */
@@ -24,7 +24,7 @@
   --accent-line: #111111;
 
   --pos: #0a8f4b;                  /* verde economico, per rendimenti */
-  --neg: #c8102e;                  /* Nike Red: perdite */
+  --neg: #c8102e;                  /* rosso QuantX: perdite */
 
   /* alias storici usati negli stili inline / JS */
   --cyan: #111111;
@@ -66,7 +66,7 @@ body::before { content: none; }
   padding: 0 48px;
 }
 
-/* ---------- NAV (stile Nike: barre bianche, voci nette) ---------- */
+/* ---------- NAV (stile QuantX: barre chiare, voci nette) ---------- */
 .nav {
   display: flex;
   justify-content: space-between;
@@ -124,7 +124,7 @@ body::before { content: none; }
 }
 .hero .btn { padding: 13px 30px; font-size: 16px; margin: 0 6px; }
 
-/* ---------- BOTTONI: PILL Nike ---------- */
+/* ---------- BOTTONI: PILL QuantX ---------- */
 .btn {
   border: 1px solid transparent;
   cursor: pointer;
@@ -176,7 +176,7 @@ body::before { content: none; }
 }
 .band .inner { max-width: 1280px; margin: 0 auto; padding: 0 48px; }
 
-/* ---------- GRID STAT (Nike: numeri enormi, niente cornici) ---------- */
+/* ---------- GRID STAT (QuantX: numeri enormi, niente cornici) ---------- */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -206,7 +206,7 @@ body::before { content: none; }
   font-weight: 600;
 }
 
-/* ---------- TILE grandi tipo Nike United ---------- */
+/* ---------- TILE grandi — visual strategia ---------- */
 .tiles {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -732,7 +732,7 @@ select.input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://ww
   .footer .foot-grid { grid-template-columns: 1fr; gap: 20px; }
 }
 
-/* ---------- LOGO INLINE + NAV A LINK (arsenale Nike) ---------- */
+/* ---------- LOGO INLINE + NAV A LINK (arsenale QuantX) ---------- */
 .logo { display: flex; align-items: center; gap: 10px; }
 .logo svg { height: 26px; width: 44px; display: block; flex-shrink: 0; }
 .logo .logo-word { color: var(--text); font-weight: 900; font-size: 17px; letter-spacing: -0.02em; text-transform: uppercase; white-space: nowrap; }
