@@ -291,7 +291,8 @@ async function renderSignals(data) {
   const profits = sig.profits || [];
   const gainedTotal = profits.reduce((a, b) => a + (b || 0), 0);
   const lvl = data.user && data.user.plan;
-  const isVip = data.user && String(data.user.planName || '').toUpperCase().startsWith('VIP');
+  const planId = data.user && (data.user.planId || (data.user.plan && data.user.plan.id) || 1);
+  const isVip = !!planId;   // ogni piano operativo del lancio ha la gestione ordini EIRIO
 
   if (isVip) {
     const n = EIRIO_ORDERS[lvl] || 4;
@@ -300,7 +301,7 @@ async function renderSignals(data) {
     $('signal-count').textContent = claimed.length + ' / ' + n + ' eseguiti';
     const note = $('signals-note');
     if (note) {
-      note.textContent = 'Livello ' + (data.user.planName || 'VIP') + ' · ' + n +
+      note.textContent = 'Livello ' + (data.user.planName || 'Top seller') + ' · ' + n +
         ' ordini al giorno, uno ogni ' + Math.round(24 / n * 60) + ' minuti.';
     }
     const rows = [];

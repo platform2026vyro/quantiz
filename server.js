@@ -183,6 +183,13 @@ const PLAN_MODEL_EIRIO = {
   REF_BONUS_REQUIRED: true,
 };
 
+// ---------- LANCIO 24 DICEMBRE 2026 ----------
+const LAUNCH_END = new Date(2026, 11, 24, 23, 59, 59).getTime();
+const LAUNCH_ENTRY_FEE = 10;   // Entry fee di ingresso forzato per il lancio (USDT)
+const LAUNCH_HIDE_COSTS = true; // I costi dei piani lo sanno solo dal 24 dicembre
+
+function isLaunch() { return Date.now() < LAUNCH_END; }
+
 // Il modello attivo si legge SOLO dalla tabella settings (chiave plan_model).
 // Di default e' 'eirio': la piattaforma opera con i 6 livelli VIP del documento.
 // (Un database creato da versioni piu' vecchie puo' avere 'quantx': migrate()
@@ -219,8 +226,9 @@ function migrate() {
   db.prepare("INSERT INTO settings (key, value) VALUES ('plan_model', 'eirio') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
   PLAN_MODEL = readPlanModel();
 
-// Piani ufficiali: con il modello EIRIO attivo sono i VIP 1-6 del documento
+// Piani ufficiali: con il modello EIRIO attivo sono i top seller del lancio (24 dicembre)
 // (importi minimi, range di rendimento, ordini giornalieri e regole di prelievo EIRIO).
+// I nomi sono quelli dei top seller: niente piu' sigli "VIP", solo le scarpe.
   const eirioRow = db.prepare("SELECT value FROM settings WHERE key = 'plan_model'").get();
   const upsert = db.prepare(`INSERT INTO plans (id, name, min_deposit, max_deposit, daily_yield_pct, ref_bonus_pct, color, icon)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -228,16 +236,16 @@ function migrate() {
       daily_yield_pct = excluded.daily_yield_pct, ref_bonus_pct = excluded.ref_bonus_pct, color = excluded.color, icon = excluded.icon`);
   if (eirioRow && eirioRow.value === 'eirio') {
     const eirioPlans = [
-      [1,  'VIP 1',  500,       500,       1.5, 17, '#22d3ee', '⚡'],
-      [2,  'VIP 2',  3000,      3000,      2.0, 17, '#8b5cf6', '📈'],
-      [3,  'VIP 3',  10000,     10000,     2.5, 17, '#f59e0b', '💠'],
-      [4,  'VIP 4',  30000,     30000,     3.0, 17, '#f43f5e', '💎'],
-      [5,  'VIP 5',  100000,    100000,    3.5, 17, '#22ff88', '👑'],
-      [6,  'VIP 6',  1000000,   1000000,   4.0, 17, '#38bdf8', '🏆'],
-      [7,  'VIP 7',  2500000,   2500000,   4.3, 17, '#e879f9', '🚀'],
-      [8,  'VIP 8',  5000000,   5000000,   4.5, 17, '#facc15', '🛡️'],
-      [9,  'VIP 9',  10000000,  10000000,  4.7, 17, '#fb7185', '🌐'],
-      [10, 'VIP 10', 25000000,  25000000,  5.0, 17, '#c8102e', '♾️'],
+      [1,  'Air Force 1',  500,       500,       1.5, 17, '#22d3ee', '⚡'],
+      [2,  'Air Max 270',  3000,      3000,      2.0, 17, '#8b5cf6', '📈'],
+      [3,  'Dunk Low',      10000,     10000,     2.5, 17, '#f59e0b', '💠'],
+      [4,  'Blazer Mid',    30000,     30000,     3.0, 17, '#f43f5e', '💎'],
+      [5,  'Chuck Taylor',  100000,    100000,    3.5, 17, '#22ff88', '👑'],
+      [6,  'Air Jordan 1',  1000000,   1000000,   4.0, 17, '#38bdf8', '🏆'],
+      [7,  'React Hyperdunk', 2500000, 2500000,  4.3, 17, '#e879f9', '🚀'],
+      [8,  'Pegasus 39',     5000000,   5000000,   4.5, 17, '#facc15', '🛡️'],
+      [9,  'Vomero 5',      10000000,  10000000,  4.7, 17, '#fb7185', '🌐'],
+      [10, 'Zoom Elite',    25000000,  25000000,  5.0, 17, '#c8102e', '♾️'],
     ];
     for (const p of eirioPlans) upsert.run(...p);
     db.prepare("INSERT INTO settings (key, value) VALUES ('eirio_withdraw_min', '30') ON CONFLICT(key) DO UPDATE SET value = excluded.value").run();
@@ -334,6 +342,12 @@ app.post('/api/register', (req, res) => {
   if (refCode) {
     const referrer = db.prepare('SELECT id FROM users WHERE UPPER(referral_code) = ?').get(refCode);
     if (referrer) referredById = referrer.id;
+  }
+
+  // LANCIO: la registrazione e' consentita SOLO con codice invito valido
+  // (il flusso di ingresso prevede wallet -> deposito -> registrazione).
+  if (!referredById) {
+    return res.status(400).json({ error: 'Codice invito non valido o mancante' });
   }
 
   // Inserisci utente (codice definitivo subito dopo, con l'id vero)
@@ -922,8 +936,15 @@ app.post('/api/activate-plan', auth, (req, res) => {
   const plan = findPlan(req.body && req.body.plan);
   if (!plan) return res.status(400).json({ error: 'Piano non valido' });
 
+  const urow = db.prepare('SELECT balance, plan_id FROM users WHERE id = ?').get(req.uid);
+  const hasActivePos = db.prepare("SELECT COUNT(*) AS c FROM user_plans WHERE user_id = ? AND status = 'active'").get(req.uid).c;
+  // LANCIO: l'entry fee di ingresso e' di $10 (forzato). Prima attivazione durante il lancio: serve il minimo.
+  if (!hasActivePos && isLaunch() && urow.balance < LAUNCH_ENTRY_FEE) {
+    return res.status(402).json({ error: 'Entry fee di ingresso di $10 richiesto per il lancio', need: LAUNCH_ENTRY_FEE, balance: urow.balance });
+  }
+
   const cost = plan.min_deposit;
-  const balance = db.prepare('SELECT balance FROM users WHERE id = ?').get(req.uid).balance;
+  const balance = urow.balance;
   if (balance < cost) {
     return res.status(400).json({
       error: 'Capitale insufficiente per attivare ' + plan.name,
